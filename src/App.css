@@ -1,8 +1,8 @@
-.app { min-height: 100vh; display: flex; flex-direction: column; }
+.app { min-height: 100vh; min-height: 100svh; display: flex; flex-direction: column; }
 .topbar {
   display: flex; align-items: center; justify-content: space-between;
   gap: 16px; padding: 14px 28px; flex-wrap: wrap;
-  background: rgba(255,255,255,0.65); backdrop-filter: blur(8px);
+  background: rgba(255,255,255,0.65); -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px);
   border-bottom: 1px solid var(--border);
   position: sticky; top: 0; z-index: 10;
 }
@@ -39,9 +39,12 @@
     gap: 10px; padding: 12px 12px;
   }
   .brand-icon { width: 44px; height: 44px; font-size: 30px; border-radius: 12px; }
+  .brand { min-width: 0; }
+  .brand > div { min-width: 0; }
   .brand h1 { font-size: 22px; }
   .tabs {
     flex-wrap: nowrap; overflow-x: auto; gap: 6px;
+    max-width: 100%;
     padding-bottom: 4px; margin-inline: -12px; padding-inline: 12px;
     -webkit-overflow-scrolling: touch; scrollbar-width: none;
   }

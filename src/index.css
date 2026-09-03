@@ -34,7 +34,7 @@ body { margin: 0; overflow-x: clip; }
 button, input { touch-action: manipulation; font-family: inherit; }
 button { -webkit-tap-highlight-color: transparent; }
 img { max-width: 100%; }
-#root { min-height: 100svh; }
+#root { min-height: 100vh; min-height: 100svh; }
 h1, h2, h3, h4 { color: var(--text-h); margin: 0 0 8px; }
 h2 { font-size: clamp(18px, 2.5vw, 22px); } h3 { font-size: 16px; } h4 { font-size: 14px; margin-top: 12px; }
 p { margin: 0 0 8px; }
@@ -45,6 +45,7 @@ p { margin: 0 0 8px; }
 .play-layout, .learn-layout {
   display: grid; gap: 20px; align-items: start;
 }
+.play-layout > *, .learn-layout > * { min-width: 0; }
 .play-layout { grid-template-columns: minmax(320px, 560px) minmax(280px, 1fr); }
 .learn-layout { grid-template-columns: 240px minmax(320px, 560px) minmax(280px, 1fr); }
 @media (max-width: 1100px) {
@@ -99,8 +100,10 @@ p { margin: 0 0 8px; }
 .move-strip { display: flex; flex-wrap: wrap; gap: 2px; }
 
 /* ---------- eval bar / status ---------- */
-.eval-row { display: flex; gap: 10px; align-items: stretch; }
+.eval-row { display: flex; gap: 10px; align-items: stretch; min-width: 0; }
+.eval-row > .board-wrap { flex: 1 1 auto; width: auto; min-width: 0; margin-inline: 0; }
 .eval-bar {
+  flex: 0 0 auto;
   width: 34px; border-radius: 8px; background: #f8fafc; border: 1px solid var(--border);
   position: relative; overflow: hidden; min-height: 200px;
 }
@@ -168,12 +171,12 @@ p { margin: 0 0 8px; }
 .game-item {
   display: flex; align-items: center; gap: 8px; padding: 7px 10px; border-radius: 10px;
   border: 1px solid transparent; background: transparent; cursor: pointer;
-  color: var(--text-h); font-size: 13.5px; text-align: left; width: 100%;
+  color: var(--text-h); font-size: 13.5px; text-align: left; width: 100%; min-width: 0;
 }
 .game-item:hover { border-color: var(--border); }
 .game-item.active { border-color: var(--accent-border); background: var(--accent-bg); }
 .game-check { width: 30px; flex-shrink: 0; }
-.game-main { flex: 1; display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+.game-main { flex: 1; display: flex; flex-direction: column; gap: 1px; min-width: 0; overflow: hidden; }
 .game-players { font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .result-pill {
   font-size: 11px; font-weight: 800; padding: 2px 8px; border-radius: 999px;
@@ -219,18 +222,20 @@ p { margin: 0 0 8px; }
   .puzzle-list { max-height: 220px; }
   .games-scroll { max-height: 260px; }
 
-  /* openings sidebar -> horizontal chip rail */
-  .open-list { flex-direction: row; overflow-x: auto; gap: 8px; padding-bottom: 6px; max-width: none; }
-  .open-list > h3 { display: none; }
-  .open-group { display: contents; }
-  .open-group-head { display: none; }
-  .open-item {
+  /* openings sidebar -> horizontal chip rail (games library stays vertical) */
+  .open-list:not(.games-list-col) { flex-direction: row; overflow-x: auto; gap: 8px; padding-bottom: 6px; max-width: none; }
+  .open-list:not(.games-list-col) > h3 { display: none; }
+  .open-list:not(.games-list-col) .open-group { display: contents; }
+  .open-list:not(.games-list-col) .open-group-head { display: none; }
+  .open-list:not(.games-list-col) .open-item {
     flex: 0 0 auto; flex-direction: row; align-items: center;
     padding: 8px 14px; white-space: nowrap;
   }
-  .open-item .open-name { font-size: 14px; }
-  .open-item .open-tags { display: none; }
-  .open-item.active .open-tags { display: flex; }
+  .open-list:not(.games-list-col) .open-item .open-name { font-size: 14px; }
+  .open-list:not(.games-list-col) .open-item .open-tags { display: none; }
+  .open-list:not(.games-list-col) .open-item.active .open-tags { display: flex; }
+  .games-list-col { max-width: 640px; width: 100%; margin-inline: auto; }
+  .game-main > span { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
   /* eval bar scales with smaller boards */
   .eval-bar { width: 28px; min-height: 120px; }
