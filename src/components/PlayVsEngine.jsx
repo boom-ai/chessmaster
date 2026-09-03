@@ -447,15 +447,15 @@ export default function PlayVsEngine() {
         </div>
         {playerBar(bottomColor)}
         <div className="quick-actions">
-          <button className="btn" onClick={undo} disabled={history.length === 0 || thinking}>↩ Undo</button>
-          <button className="btn" onClick={hint} disabled={!!result || thinking || reviewing}>💡 Hint</button>
-          <button className="btn" onClick={flipBoard}>🔄 Flip</button>
+          <button className="btn" title="Undo move" aria-label="Undo move" onClick={undo} disabled={history.length === 0 || thinking}>↩</button>
+          <button className="btn" title="Hint" aria-label="Hint" onClick={hint} disabled={!!result || thinking || reviewing}>💡</button>
+          <button className="btn" title="Flip board" aria-label="Flip board" onClick={flipBoard}>🔄</button>
           {!reviewing ? (
-            <button className="btn" onClick={startReview} disabled={history.length === 0}>🔍 Review</button>
+            <button className="btn" title="Review game" aria-label="Review game" onClick={startReview} disabled={history.length === 0}>🔍</button>
           ) : (
-            <button className="btn primary" onClick={() => setReviewing(false)}>▶ Live</button>
+            <button className="btn primary" title="Back to live game" aria-label="Back to live game" onClick={() => setReviewing(false)}>▶</button>
           )}
-          <button className="btn" onClick={toggleFullscreen}>{isFullscreen ? '⛶ Exit' : '⛶ Full'}</button>
+          <button className="btn" title={isFullscreen ? 'Exit fullscreen' : 'Fullscreen'} aria-label={isFullscreen ? 'Exit fullscreen' : 'Fullscreen'} onClick={toggleFullscreen}>⛶</button>
         </div>
         {reviewing && (
           <div className="step-controls">
