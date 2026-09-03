@@ -252,6 +252,23 @@ export default function PlayVsEngine() {
     }
   };
 
+  const fsMovesRef = useRef(null);
+  useEffect(() => {
+    if (isFullscreen && !reviewing && fsMovesRef.current) {
+      fsMovesRef.current.scrollTop = fsMovesRef.current.scrollHeight;
+    }
+  }, [history.length, isFullscreen, reviewing]);
+
+  const reviewAt = (ply) => {
+    if (ply >= verboseHist.length) {
+      setReviewing(false);
+      setReviewPly(verboseHist.length);
+    } else {
+      setReviewPly(ply);
+      setReviewing(true);
+    }
+  };
+
   const statusText = () => {
     if (reviewing) return `Reviewing move ${reviewPly} / ${verboseHist.length}. Exit review to continue playing.`;
     if (result) return result;
@@ -347,6 +364,28 @@ export default function PlayVsEngine() {
             <button className="btn" onClick={() => setReviewPly((p) => Math.min(verboseHist.length, p + 1))}>Next →</button>
             <button className="btn" onClick={() => setReviewPly(verboseHist.length)}>End ⏭</button>
             <button className="btn primary" onClick={() => setReviewing(false)}>✕ Exit review</button>
+          </div>
+        )}
+        {isFullscreen && (
+          <div className="fs-moves">
+            <div className="fs-moves-list" ref={fsMovesRef}>
+              {pairs.length === 0 && <span className="muted small">No moves yet — make the first move.</span>}
+              {pairs.map((p, pi) => (
+                <span key={p.n} className="fs-move">
+                  <span className="move-n">{p.n}.</span>
+                  <span
+                    className={`move-cell ${reviewing && reviewPly === pi * 2 + 1 ? 'current' : ''}`}
+                    onClick={() => reviewAt(pi * 2 + 1)}
+                  >{p.w}</span>
+                  {p.b && (
+                    <span
+                      className={`move-cell ${reviewing && reviewPly === pi * 2 + 2 ? 'current' : ''}`}
+                      onClick={() => reviewAt(pi * 2 + 2)}
+                    >{p.b}</span>
+                  )}
+                </span>
+              ))}
+            </div>
           </div>
         )}
       </div>

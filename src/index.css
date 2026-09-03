@@ -139,6 +139,42 @@ p { margin: 0 0 8px; }
 .play-layout.is-fullscreen .fs-bar {
   display: flex; gap: 6px; justify-content: center; flex-wrap: wrap;
 }
+.fs-moves { display: none; }
+
+/* portrait fullscreen (phones, portrait tablets): board on top, moves fill the rest — chess.com style */
+@media (orientation: portrait) {
+  .play-layout.is-fullscreen .board-col {
+    flex: 1 1 auto; min-height: 0;
+  }
+  .play-layout.is-fullscreen .eval-row,
+  .play-layout.is-fullscreen .status-line,
+  .play-layout.is-fullscreen .fs-bar,
+  .play-layout.is-fullscreen .step-controls {
+    width: 100%;
+  }
+  .play-layout.is-fullscreen .fs-moves {
+    display: flex; flex-direction: column;
+    flex: 1 1 auto; min-height: 70px; width: 100%;
+    background: var(--card); border: 1px solid var(--border); border-radius: 12px;
+    padding: 10px 12px; box-sizing: border-box;
+  }
+  .play-layout.is-fullscreen .fs-moves-list {
+    overflow-y: auto; font-size: 14.5px; line-height: 2;
+  }
+  .play-layout.is-fullscreen .fs-move { display: inline-flex; gap: 7px; align-items: baseline; white-space: nowrap; margin-right: 12px; }
+  .play-layout.is-fullscreen .fs-move .move-cell { cursor: pointer; padding: 2px 6px; }
+}
+
+@media (max-width: 640px) {
+  .play-layout.is-fullscreen { gap: 8px; padding: 8px 10px; }
+  .play-layout.is-fullscreen .fs-bar {
+    flex-wrap: nowrap; justify-content: flex-start;
+    overflow-x: auto; width: 100%;
+    padding-bottom: 2px;
+  }
+  .play-layout.is-fullscreen .fs-bar .btn { flex: 0 0 auto; }
+  .play-layout.is-fullscreen .step-controls .btn { flex: 1 1 30%; }
+}
 .move-chip { display: inline-block; padding: 3px 8px; margin: 2px; border-radius: 8px; background: var(--accent-bg); border: 1px solid var(--border); font-size: 13.5px; color: var(--text-h); }
 .move-chip.clickable { cursor: pointer; }
 .move-chip.clickable:hover { border-color: var(--accent-border); }
