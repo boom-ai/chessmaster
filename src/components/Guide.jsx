@@ -1,6 +1,7 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { Chess } from 'chess.js';
 import Board from './Board.jsx';
+import { PIECE_PUZZLES } from '../data/puzzlesByPiece.js';
 
 const PIECES = [
   {
@@ -119,6 +120,87 @@ export default function Guide() {
   const [demoFen, setDemoFen] = useState(demo.fen);
   const [demoMoves, setDemoMoves] = useState(0);
   const [challenge, setChallenge] = useState(false);
+  const [ppuzzle, setPpuzzle] = useState(null);
+  const [pply, setPply] = useState(0);
+  const [pmsg, setPmsg] = useState('');
+  const busyRef = useRef(false);
+  const fenRef = useRef(demo.fen);
+  const setFenBoth = (f) => {
+    fenRef.current = f;
+    setDemoFen(f);
+  };
+
+  const pickPiece = (id) => {
+    const d = PIECES.find((p) => p.id === id);
+    setPieceId(id);
+    setFenBoth(d.fen);
+    setDemoMoves(0);
+    setPpuzzle(null);
+    setPply(0);
+    setPmsg('');
+    busyRef.current = false;
+  };
+
+  const startPuzzle = (p) => {
+    busyRef.current = false;
+    setChallenge(false);
+    setPpuzzle(p);
+    setPply(0);
+    setPmsg('');
+    setDemoMoves(0);
+    setFenBoth(p.fen);
+  };
+
+  const exitPuzzle = () => {
+    setPpuzzle(null);
+    setPply(0);
+    setPmsg('');
+    busyRef.current = false;
+    setFenBoth(demo.fen);
+    setDemoMoves(0);
+  };
+
+  const tryPuzzleMove = (from, to) => {
+    const p = ppuzzle;
+    if (!p || busyRef.current) return false;
+    const expected = p.solution[pply];
+    if (!expected) return false;
+    if ((from + to).toLowerCase() !== expected.slice(0, 4).toLowerCase()) {
+      setPmsg('Not quite — try again.');
+      return false;
+    }
+    try {
+      const test = new Chess(demoFen);
+      test.move({ from, to, promotion: 'q' });
+      setFenBoth(test.fen());
+      setDemoMoves((n) => n + 1);
+    } catch {
+      return false;
+    }
+    const np = pply + 1;
+    setPply(np);
+    if (np >= p.solution.length) {
+      setPmsg(`🎉 Solved! ${p.explanation}`);
+      return true;
+    }
+    busyRef.current = true;
+    setPmsg('Good move! Opponent replies…');
+    const reply = p.solution[np];
+    setTimeout(() => {
+      try {
+        const g2 = new Chess(fenRef.current);
+        g2.move({ from: reply.slice(0, 2), to: reply.slice(2, 4), promotion: 'q' });
+        setFenBoth(g2.fen());
+      } catch {
+        /* verified lines never fail */
+      }
+      setPply(np + 1);
+      busyRef.current = false;
+      if (np + 1 >= p.solution.length) setPmsg(`🎉 Solved! ${p.explanation}`);
+      else setPmsg('Your move — finish it!');
+    }, 650);
+    return true;
+  };
 
   const countTargets = (fen) => {
     try {
@@ -143,13 +225,6 @@ export default function Guide() {
     pickPiece(PIECES[(i + 1) % PIECES.length].id);
   };
 
-  const pickPiece = (id) => {
-    const d = PIECES.find((p) => p.id === id);
-    setPieceId(id);
-    setDemoFen(d.fen);
-    setDemoMoves(0);
-  };
-
   const forceWhite = (fen) => fen.replace(/ ([wb]) /, ' w ');
 
   const tryDemoMove = (from, to) => {
@@ -160,7 +235,7 @@ export default function Guide() {
       if (!cur || cur.color !== 'w' || cur.type !== demo.piece) return false;
       const m = test.move({ from, to, promotion: 'q' });
       if (!m) return false;
-      setDemoFen(test.fen());
+      setFenBoth(test.fen());
       setDemoMoves((n) => n + 1);
       return true;
     } catch {
@@ -169,10 +244,36 @@ export default function Guide() {
   };
 
   const legalFrom = (sq) => {
+    if (ppuzzle) {
+      try {
+        return new Chess(demoFen).moves({ square: sq, verbose: true }).map((m) => m.to);
+      } catch {
+        return [];
+      }
+    }
     try {
       return new Chess(forceWhite(demoFen)).moves({ square: sq, verbose: true }).map((m) => m.to);
     } catch {
       return [];
+    }
+  };
+
+  const canDragDemo = ({ piece, square }) => {
+    if (!piece) return false;
+    if (ppuzzle) {
+      try {
+        const cur = new Chess(demoFen).get(square);
+        return !!cur && cur.color === ppuzzle.side;
+      } catch {
+        return false;
+      }
+    }
+    try {
+      const g = new Chess(forceWhite(demoFen));
+      const cur = g.get(square);
+      return !!cur && cur.color === 'w' && cur.type === demo.piece;
+    } catch {
+      return false;
     }
   };
 
@@ -197,36 +298,41 @@ export default function Guide() {
             <Board
               fen={demoFen}
               orientation="white"
-              canDragPiece={({ piece, square }) => {
-                if (!piece) return false;
-                try {
-                  const g = new Chess(forceWhite(demoFen));
-                  const cur = g.get(square);
-                  return !!cur && cur.color === 'w' && cur.type === demo.piece;
-                } catch {
-                  return false;
-                }
-              }}
-              onMove={tryDemoMove}
+              canDragPiece={canDragDemo}
+              onMove={ppuzzle ? tryPuzzleMove : tryDemoMove}
               getLegalTargets={legalFrom}
             />
             <div className="status-line">
               <strong>
-                {challenge
-                  ? (challengeWon
-                    ? `🏆 Challenge complete — all ${totalTargets} captured!`
-                    : !hasDemoPiece
-                      ? 'Promoted! That ends the run — reset to retry the challenge.'
-                      : `🎯 Capture all black pieces with the ${demo.name.toLowerCase()}: ${remaining} left!`)
-                  : `Drag the ${demo.name.toLowerCase()} — dots show where it can go.`}
+                {ppuzzle
+                  ? `🧩 ${ppuzzle.title} ★${ppuzzle.rating} — ${pmsg || 'Find the move!'}`
+                  : challenge
+                    ? (challengeWon
+                      ? `🏆 Challenge complete — all ${totalTargets} captured!`
+                      : !hasDemoPiece
+                        ? 'Promoted! That ends the run — reset to retry the challenge.'
+                        : `🎯 Capture all black pieces with the ${demo.name.toLowerCase()}: ${remaining} left!`)
+                    : `Drag the ${demo.name.toLowerCase()} — dots show where it can go.`}
               </strong>
               <span className="muted">Moves tried: {demoMoves}</span>
             </div>
             <div className="btn-row wrap">
-              <button className="btn" onClick={() => { setDemoFen(demo.fen); setDemoMoves(0); }}>↺ Reset demo</button>
-              <button className={`btn ${challenge ? 'primary' : ''}`} onClick={() => setChallenge((c) => !c)}>
-                {challenge ? '✕ Exit challenge' : `🎯 Challenge (${totalTargets} targets)`}
-              </button>
+              <button
+                className="btn"
+                onClick={() => {
+                  if (ppuzzle) { setPply(0); setPmsg(''); setFenBoth(ppuzzle.fen); }
+                  else { setFenBoth(demo.fen); }
+                  setDemoMoves(0);
+                }}
+              >↺ {ppuzzle ? 'Restart puzzle' : 'Reset demo'}</button>
+              {!ppuzzle && (
+                <button className={`btn ${challenge ? 'primary' : ''}`} onClick={() => setChallenge((c) => !c)}>
+                  {challenge ? '✕ Exit challenge' : `🎯 Challenge (${totalTargets} targets)`}
+                </button>
+              )}
+              {ppuzzle && (
+                <button className="btn" onClick={exitPuzzle}>✕ Exit puzzle (free play)</button>
+              )}
             </div>
           </>
         )}
@@ -276,14 +382,34 @@ export default function Guide() {
           </div>
         )}
         {section === 'pieces' ? (
-          <div className="card coach">
-            <h2>{demo.glyph} {demo.name} <span className="muted small">· {demo.value}</span></h2>
-            <p className="coach-text">{demo.how}</p>
-            <h4>🧠 If-scenarios to remember</h4>
-            <ul className="ideas">
-              {demo.scenarios.map((s, i) => <li key={i}>{s}</li>)}
-            </ul>
-          </div>
+          <>
+            <div className="card coach">
+              <h2>{demo.glyph} {demo.name} <span className="muted small">· {demo.value}</span></h2>
+              <p className="coach-text">{demo.how}</p>
+              <h4>🧠 If-scenarios to remember</h4>
+              <ul className="ideas">
+                {demo.scenarios.map((s, i) => <li key={i}>{s}</li>)}
+              </ul>
+            </div>
+            <div className="card">
+              <h3>🧩 {demo.name} puzzles — play them!</h3>
+              <p className="muted small">Real Lichess puzzles starring this piece. Black replies play automatically.</p>
+              <div className="puzzle-list">
+                {PIECE_PUZZLES[demo.id].map((p) => (
+                  <button key={p.id} className={`puzzle-item ${ppuzzle?.id === p.id ? 'active' : ''}`} onClick={() => startPuzzle(p)}>
+                    <span className="puzzle-name">{p.title}</span>
+                    <span className="pill small">{p.side === 'w' ? 'White' : 'Black'}</span>
+                    <span className="pill small">★{p.rating}</span>
+                  </button>
+                ))}
+              </div>
+              {ppuzzle && (
+                <div className="coach-text" style={{ marginTop: 8 }}>
+                  <strong>💭 Hint:</strong> {ppuzzle.hint}
+                </div>
+              )}
+            </div>
+          </>
         ) : (
           <div className="card coach">
             <h3>💡 How to use this guide</h3>
