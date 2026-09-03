@@ -39,8 +39,8 @@ const PIECES = [
     name: 'Bishop',
     value: '3 points',
     piece: 'b',
-    fen: '7k/5p2/8/1P6/2B5/8/8/K7 w - - 0 1',
-    how: 'Glides along diagonals, any distance, but never changes square color. Try sliding to d5 and e6, capturing on f7 — or retreat to b3, a2, d3, e2, f1 (b5 holds your own pawn, so that way is shut).',
+    fen: '7k/5p2/8/1P1p4/2B5/8/p7/K7 w - - 0 1',
+    how: 'Glides along diagonals, any distance, but never changes square color. Start by taking on d5, then continue to f7 — or grab a2 (b5 holds your own pawn, so that way is shut).',
     scenarios: [
       'If your bishop is locked behind its own pawns (“bad bishop”), trade it for a knight or reroute it with a pawn break.',
       'If you fianchetto (pawns g3 + bishop g2), the bishop snipes the center from the flank — but watch the dark squares around your king.',
@@ -54,8 +54,8 @@ const PIECES = [
     name: 'Rook',
     value: '5 points',
     piece: 'r',
-    fen: '7k/p7/8/8/R3p3/8/8/K7 w - - 0 1',
-    how: 'Travels straight along ranks and files. Climb the a-file to take on a7, or sweep the 4th rank and capture on e4.',
+    fen: '7k/p7/8/8/R3p2p/8/8/K7 w - - 0 1',
+    how: 'Travels straight along ranks and files. Climb the a-file to take on a7, sweep the 4th rank to capture on e4 — then h4 opens up.',
     scenarios: [
       'If a file has no pawns (“open file”), put a rook on it — rooks starve without open lines.',
       'If your rook reaches the 7th rank, enemy pawns start falling: Rxf7-style chaos follows.',
@@ -70,7 +70,7 @@ const PIECES = [
     value: '9 points',
     piece: 'q',
     fen: '7k/8/3p1p2/8/1P1Q4/8/8/K7 w - - 0 1',
-    how: 'Moves like rook + bishop combined — the strongest piece. Explore: take on d6 or f6, slide anywhere open (b4 holds your own pawn).',
+    how: 'Moves like rook + bishop combined — the strongest piece. Explore: take on d6 or f6, or swing across to grab g4 (b4 holds your own pawn).',
     scenarios: [
       'If you bring the queen out too early, enemy pieces gain free moves chasing it — develop knights and bishops first.',
       'If you are a queen up, trade queens and win the endgame: fewer pieces, fewer surprises.',
@@ -84,8 +84,8 @@ const PIECES = [
     name: 'King',
     value: 'Priceless',
     piece: 'k',
-    fen: '7k/8/8/4p3/4KP2/8/8/8 w - - 0 1',
-    how: 'Steps one square in any direction. Try taking on e5 (your f4 pawn blocks that way). In endgames the king becomes a fighting piece — march it to the center.',
+    fen: '7k/8/8/4p3/3pKP2/5p2/8/8 w - - 0 1',
+    how: 'Steps one square in any direction. Gobble e5 or f3 — but d4 is defended by the e5 pawn, and f4 holds your own pawn. In endgames march the king to the center.',
     scenarios: [
       'If you have not castled by move 10, you are probably behind — castle early, connect rooks, then attack.',
       'If you are in check, you must: move the king, capture the checker, or block the check (blocking fails against knights).',
@@ -118,6 +118,30 @@ export default function Guide() {
   const demo = PIECES.find((p) => p.id === pieceId);
   const [demoFen, setDemoFen] = useState(demo.fen);
   const [demoMoves, setDemoMoves] = useState(0);
+  const [challenge, setChallenge] = useState(false);
+
+  const countTargets = (fen) => {
+    try {
+      return new Chess(fen).board().flat().filter((p) => p && p.color === 'b' && p.type !== 'k').length;
+    } catch {
+      return 0;
+    }
+  };
+  const totalTargets = countTargets(demo.fen);
+  const remaining = countTargets(demoFen);
+  const hasDemoPiece = (() => {
+    try {
+      return new Chess(demoFen).board().flat().some((p) => p && p.color === 'w' && p.type === demo.piece);
+    } catch {
+      return false;
+    }
+  })();
+  const challengeWon = challenge && remaining === 0;
+
+  const nextPiece = () => {
+    const i = PIECES.findIndex((p) => p.id === pieceId);
+    pickPiece(PIECES[(i + 1) % PIECES.length].id);
+  };
 
   const pickPiece = (id) => {
     const d = PIECES.find((p) => p.id === id);
@@ -131,6 +155,9 @@ export default function Guide() {
   const tryDemoMove = (from, to) => {
     try {
       const test = new Chess(forceWhite(demoFen));
+      const cur = test.get(from);
+      // Only the featured piece may move — kings and pawns stay put.
+      if (!cur || cur.color !== 'w' || cur.type !== demo.piece) return false;
       const m = test.move({ from, to, promotion: 'q' });
       if (!m) return false;
       setDemoFen(test.fen());
@@ -184,11 +211,22 @@ export default function Guide() {
               getLegalTargets={legalFrom}
             />
             <div className="status-line">
-              <strong>Drag the {demo.name.toLowerCase()} — dots show where it can go.</strong>
+              <strong>
+                {challenge
+                  ? (challengeWon
+                    ? `🏆 Challenge complete — all ${totalTargets} captured!`
+                    : !hasDemoPiece
+                      ? 'Promoted! That ends the run — reset to retry the challenge.'
+                      : `🎯 Capture all black pieces with the ${demo.name.toLowerCase()}: ${remaining} left!`)
+                  : `Drag the ${demo.name.toLowerCase()} — dots show where it can go.`}
+              </strong>
               <span className="muted">Moves tried: {demoMoves}</span>
             </div>
-            <div className="btn-row">
+            <div className="btn-row wrap">
               <button className="btn" onClick={() => { setDemoFen(demo.fen); setDemoMoves(0); }}>↺ Reset demo</button>
+              <button className={`btn ${challenge ? 'primary' : ''}`} onClick={() => setChallenge((c) => !c)}>
+                {challenge ? '✕ Exit challenge' : `🎯 Challenge (${totalTargets} targets)`}
+              </button>
             </div>
           </>
         )}
@@ -228,6 +266,15 @@ export default function Guide() {
       </div>
 
       <div className="side-col">
+        {section === 'pieces' && challenge && challengeWon && (
+          <div className="card coach">
+            <h3>🏆 {demo.name} mastered!</h3>
+            <p>You captured every target in {demoMoves} moves. Try to beat that score — or take the next piece.</p>
+            <div className="btn-row">
+              <button className="btn primary" onClick={nextPiece}>Next piece →</button>
+            </div>
+          </div>
+        )}
         {section === 'pieces' ? (
           <div className="card coach">
             <h2>{demo.glyph} {demo.name} <span className="muted small">· {demo.value}</span></h2>
