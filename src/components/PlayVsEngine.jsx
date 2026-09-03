@@ -287,8 +287,28 @@ export default function PlayVsEngine() {
   };
 
   return (
-    <div ref={wrapRef} className={`play-layout ${isFullscreen ? 'is-fullscreen' : ''}`}>
+    <div ref={wrapRef} className={`play-layout ${isFullscreen ? 'is-fullscreen' : ''} ${reviewing ? 'is-reviewing' : ''}`}>
       <div className="board-col">
+        <div className="status-line">
+          <span className={`dot ${thinking ? 'thinking' : 'idle'}`} />
+          <strong>{statusText()}</strong>
+          <span className={`engine-badge ${engineStatus}`}>
+            {engineStatus === 'ready' ? '⚡ Stockfish' : engineStatus === 'fallback' ? '🧠 Local engine' : '⏳ Loading engine…'}
+          </span>
+        </div>
+        {isFullscreen && (
+          <div className="fs-bar">
+            <button className="btn small-btn" onClick={undo} disabled={history.length === 0 || thinking}>↩ Undo</button>
+            <button className="btn small-btn" onClick={hint} disabled={!!result || thinking || reviewing}>💡 Hint</button>
+            <button className="btn small-btn" onClick={flipBoard}>🔄 Flip</button>
+            {!reviewing ? (
+              <button className="btn small-btn" onClick={startReview} disabled={history.length === 0}>🔍 Review</button>
+            ) : (
+              <button className="btn small-btn primary" onClick={() => setReviewing(false)}>▶ Live</button>
+            )}
+            <button className="btn small-btn" onClick={toggleFullscreen}>⛶ Exit</button>
+          </div>
+        )}
         <div className="eval-row">
           <div className="eval-bar" title="Engine evaluation">
             <div className="eval-fill" style={{ height: `${100 - pct}%` }} />
@@ -318,13 +338,6 @@ export default function PlayVsEngine() {
               }
             }}
           />
-        </div>
-        <div className="status-line">
-          <span className={`dot ${thinking ? 'thinking' : 'idle'}`} />
-          <strong>{statusText()}</strong>
-          <span className={`engine-badge ${engineStatus}`}>
-            {engineStatus === 'ready' ? '⚡ Stockfish' : engineStatus === 'fallback' ? '🧠 Local engine' : '⏳ Loading engine…'}
-          </span>
         </div>
         {reviewing && (
           <div className="step-controls">
