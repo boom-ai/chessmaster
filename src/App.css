@@ -32,6 +32,11 @@
 }
 .footer { padding: 12px; text-align: center; font-size: 12px; color: var(--text); border-top: 1px solid var(--border); }
 
+@media (prefers-color-scheme: dark) {
+  .topbar { background: rgba(17, 19, 24, 0.78); }
+  .tab { border-color: #3a3f4b; }
+}
+
 /* ---------- responsive header ---------- */
 @media (max-width: 760px) {
   .topbar {
