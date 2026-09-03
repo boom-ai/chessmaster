@@ -17,6 +17,31 @@ function evalToWhitePct(cp, mate) {
   return 50 * (1 + Math.tanh((cp ?? 0) / 600));
 }
 
+const TIME_CONTROLS = [
+  { id: 'casual', name: 'Casual', cat: 'No clock', base: null, inc: 0 },
+  { id: 'b10', name: '1+0', cat: 'Bullet', base: 60, inc: 0 },
+  { id: 'b21', name: '2+1', cat: 'Bullet', base: 120, inc: 1 },
+  { id: 'z30', name: '3+0', cat: 'Blitz', base: 180, inc: 0 },
+  { id: 'z32', name: '3+2', cat: 'Blitz', base: 180, inc: 2 },
+  { id: 'z50', name: '5+0', cat: 'Blitz', base: 300, inc: 0 },
+  { id: 'z53', name: '5+3', cat: 'Blitz', base: 300, inc: 3 },
+  { id: 'r100', name: '10+0', cat: 'Rapid', base: 600, inc: 0 },
+  { id: 'r105', name: '10+5', cat: 'Rapid', base: 600, inc: 5 },
+  { id: 'r1510', name: '15+10', cat: 'Rapid', base: 900, inc: 10 },
+  { id: 'r300', name: '30+0', cat: 'Rapid', base: 1800, inc: 0 },
+];
+
+function fmtClock(ms) {
+  const total = Math.max(0, ms);
+  const m = Math.floor(total / 60000);
+  const s = Math.floor((total % 60000) / 1000);
+  if (total < 20000) {
+    const d = Math.floor((total % 1000) / 100);
+    return `${m}:${String(s).padStart(2, '0')}.${d}`;
+  }
+  return `${m}:${String(s).padStart(2, '0')}`;
+}
+
 export default function PlayVsEngine() {
   const gameRef = useRef(new Chess());
   const [fen, setFen] = useState(gameRef.current.fen());
@@ -35,12 +60,17 @@ export default function PlayVsEngine() {
   const [reviewing, setReviewing] = useState(false);
   const [reviewPly, setReviewPly] = useState(0);
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [tcId, setTcId] = useState('casual');
+  const [clocks, setClocks] = useState({ w: 600000, b: 600000 });
+  const [clockOn, setClockOn] = useState(null); // 'w' | 'b' | null
   const searchId = useRef(0);
   const wrapRef = useRef(null);
   // Mirrors to avoid stale closures in timeouts/engine callbacks
   const playerColorRef = useRef('w');
   const thinkingRef = useRef(false);
   const resultRef = useRef(null);
+  const tcRef = useRef(TIME_CONTROLS[0]);
+  const flaggedRef = useRef(false);
 
   const setThinkingBoth = (v) => {
     thinkingRef.current = v;
@@ -71,6 +101,38 @@ export default function PlayVsEngine() {
     document.addEventListener('fullscreenchange', onFs);
     return () => document.removeEventListener('fullscreenchange', onFs);
   }, []);
+
+  const flagFall = (side) => {
+    if (resultRef.current || flaggedRef.current) return;
+    flaggedRef.current = true;
+    setClockOn(null);
+    const r = side === playerColorRef.current
+      ? 'Flag! Your time ran out — engine wins on time.'
+      : 'Flag! Engine ran out of time — you win! 🎉';
+    resultRef.current = r;
+    setResult(r);
+  };
+
+  // Clock ticker — pauses while reviewing or after game end
+  useEffect(() => {
+    if (!clockOn || tcRef.current.base == null || resultRef.current || reviewing) return undefined;
+    const side = clockOn;
+    const iv = setInterval(() => {
+      setClocks((prev) => {
+        const next = Math.max(0, prev[side] - 100);
+        if (next <= 0) setTimeout(() => flagFall(side), 0);
+        return { ...prev, [side]: next };
+      });
+    }, 100);
+    return () => clearInterval(iv);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [clockOn, tcId, result, reviewing]);
+
+  const addIncrement = (side) => {
+    const inc = tcRef.current.inc;
+    if (!inc) return;
+    setClocks((prev) => ({ ...prev, [side]: prev[side] + inc * 1000 }));
+  };
 
   const sync = () => {
     const g = gameRef.current;
@@ -133,6 +195,10 @@ export default function PlayVsEngine() {
     setThinkingBoth(false);
     setReviewing(false);
     sync();
+    addIncrement(gameRef.current.turn() === 'w' ? 'b' : 'w'); // mover just played
+    if (!gameRef.current.isGameOver() && tcRef.current.base != null) {
+      setClockOn(gameRef.current.turn());
+    }
   };
 
   const handleMove = (from, to) => {
@@ -153,17 +219,29 @@ export default function PlayVsEngine() {
     setLastMove([from, to]);
     setReviewing(false);
     sync();
-    if (!g.isGameOver()) requestEngineMove(g.fen());
+    addIncrement(playerColorRef.current);
+    if (!g.isGameOver()) {
+      if (tcRef.current.base != null) setClockOn(g.turn());
+      requestEngineMove(g.fen());
+    } else {
+      setClockOn(null);
+    }
     return true;
   };
 
-  const newGame = (color = playerColorRef.current) => {
+  const newGame = (color = playerColorRef.current, tc = tcRef.current) => {
     searchId.current += 1;
     getEngine().stop();
     setThinkingBoth(false);
+    flaggedRef.current = false;
     gameRef.current = new Chess();
     playerColorRef.current = color;
     setPlayerColor(color);
+    tcRef.current = tc;
+    setTcId(tc.id);
+    const base = tc.base != null ? tc.base * 1000 : 600000;
+    setClocks({ w: base, b: base });
+    setClockOn(tc.base != null ? 'w' : null);
     setLastMove([]);
     setHintArrow([]);
     setEvalMate(null);
@@ -190,6 +268,7 @@ export default function PlayVsEngine() {
     searchId.current += 1;
     getEngine().stop();
     setThinkingBoth(false);
+    flaggedRef.current = false;
     const g = gameRef.current;
     if (g.history().length === 0) return;
     g.undo();
@@ -200,6 +279,7 @@ export default function PlayVsEngine() {
     setHintArrow([]);
     setReviewing(false);
     sync();
+    if (tcRef.current.base != null && !resultRef.current) setClockOn(gameRef.current.turn());
   };
 
   const hint = async () => {
@@ -299,9 +379,30 @@ export default function PlayVsEngine() {
     searchId.current += 1;
     getEngine().stop();
     setThinkingBoth(false);
+    setClockOn(null);
     resultRef.current = 'You resigned. Engine wins.';
     setResult(resultRef.current);
   };
+
+  const tc = TIME_CONTROLS.find((t) => t.id === tcId) ?? TIME_CONTROLS[0];
+  const engineColor = playerColor === 'w' ? 'b' : 'w';
+  const topColor = orientation === 'white' ? 'b' : 'w';
+  const bottomColor = orientation === 'white' ? 'w' : 'b';
+  const clockRunning = (side) => !reviewing && !result && clockOn === side && tc.base != null;
+  const nameFor = (side) => (side === playerColor
+    ? `You ${side === 'w' ? '♔' : '♚'}`
+    : `Stockfish ${level.name}`);
+  const playerBar = (side) => (
+    <div className="player-bar">
+      <span className="avatar">{side === playerColor ? '👤' : '🤖'}</span>
+      <span className="player-name">{nameFor(side)} <em>{side === playerColor ? tc.name : level.elo}</em></span>
+      {tc.base != null && (
+        <span className={`clock ${clockRunning(side) ? 'active' : ''} ${clocks[side] < 10000 ? 'low' : ''}`}>
+          {fmtClock(clocks[side])}
+        </span>
+      )}
+    </div>
+  );
 
   return (
     <div ref={wrapRef} className={`play-layout ${isFullscreen ? 'is-fullscreen' : ''} ${reviewing ? 'is-reviewing' : ''}`}>
@@ -313,6 +414,7 @@ export default function PlayVsEngine() {
             {engineStatus === 'ready' ? '⚡ Stockfish' : engineStatus === 'fallback' ? '🧠 Local engine' : '⏳ Loading engine…'}
           </span>
         </div>
+        {playerBar(topColor)}
         {isFullscreen && (
           <div className="fs-bar">
             <button className="btn small-btn" onClick={undo} disabled={history.length === 0 || thinking}>↩ Undo</button>
@@ -356,6 +458,7 @@ export default function PlayVsEngine() {
             }}
           />
         </div>
+        {playerBar(bottomColor)}
         {reviewing && (
           <div className="step-controls">
             <button className="btn" onClick={() => setReviewPly(0)}>⏮ Start</button>
@@ -396,6 +499,25 @@ export default function PlayVsEngine() {
           <div className="btn-row">
             <button className={`btn ${playerColor === 'w' ? 'primary' : ''}`} onClick={() => newGame('w')}>♔ Play White</button>
             <button className={`btn ${playerColor === 'b' ? 'primary' : ''}`} onClick={() => newGame('b')}>♚ Play Black</button>
+          </div>
+          <label className="field-label">Time control</label>
+          <div className="tc-groups">
+            {['No clock', 'Bullet', 'Blitz', 'Rapid'].map((cat) => (
+              <div key={cat} className="tc-row">
+                <span className="tc-cat">{cat}</span>
+                <div className="tc-chips">
+                  {TIME_CONTROLS.filter((t) => t.cat === cat).map((t) => (
+                    <button
+                      key={t.id}
+                      className={`chip ${t.id === tcId ? 'active' : ''}`}
+                      onClick={() => newGame(playerColorRef.current, t)}
+                    >
+                      {t.name}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            ))}
           </div>
           <label className="field-label">Engine strength</label>
           <div className="level-list">

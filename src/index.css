@@ -99,6 +99,38 @@ p { margin: 0 0 8px; }
 .moves.review-clickable .move-cell:hover { background: var(--accent-bg); }
 .moves.review-clickable .move-cell.current:hover { background: var(--accent); }
 
+/* ---------- play: player bars, clocks, time controls ---------- */
+.player-bar {
+  display: flex; align-items: center; gap: 10px;
+  background: var(--card); border: 1px solid var(--border); border-radius: 12px;
+  padding: 8px 12px; min-width: 0;
+}
+.avatar {
+  width: 36px; height: 36px; border-radius: 10px; flex-shrink: 0;
+  display: grid; place-items: center; font-size: 22px;
+  background: var(--accent-bg); border: 1px solid var(--border);
+}
+.player-name { flex: 1; min-width: 0; font-weight: 700; font-size: 14.5px; color: var(--text-h); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.player-name em { font-style: normal; font-weight: 400; opacity: 0.6; font-size: 12.5px; }
+.clock {
+  font-variant-numeric: tabular-nums; font-weight: 800; font-size: 20px;
+  padding: 4px 12px; border-radius: 10px; flex-shrink: 0;
+  background: var(--bg); border: 1px solid var(--border); color: var(--text-h);
+  min-width: 86px; text-align: center;
+}
+.clock.active { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent-border); }
+.clock.low { color: var(--danger); border-color: var(--danger); animation: pulse 1s infinite; }
+.tc-groups { display: flex; flex-direction: column; gap: 6px; }
+.tc-row { display: flex; align-items: center; gap: 8px; }
+.tc-cat { width: 62px; flex-shrink: 0; font-size: 12px; font-weight: 700; color: var(--text-h); }
+.tc-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.chip {
+  padding: 7px 12px; border-radius: 999px; font-size: 13.5px; font-weight: 700;
+  border: 1px solid var(--border); background: transparent; color: var(--text-h);
+  cursor: pointer; min-height: 36px;
+}
+.chip.active { background: var(--accent); border-color: var(--accent); color: #fff; }
+
 /* ---------- play: review + board-focused fullscreen ---------- */
 .fs-bar { display: none; }
 .play-layout.is-fullscreen {
