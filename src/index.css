@@ -204,6 +204,8 @@ p { margin: 0 0 8px; }
 .engine-badge.fallback { border-color: rgba(234,179,8,.5); color: #ca8a04; }
 .progress-track { height: 8px; border-radius: 99px; background: var(--border); overflow: hidden; }
 .progress-fill { height: 100%; background: linear-gradient(90deg, #16a34a, #4ade80); transition: width .3s; }
+.puzzle-quickbar { display: flex; gap: 8px; }
+.puzzle-quickbar .btn { flex: 1; }
 
 /* ---------- puzzles ---------- */
 .puzzle-head { display: flex; justify-content: space-between; gap: 12px; align-items: flex-start; }

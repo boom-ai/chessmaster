@@ -253,6 +253,10 @@ export default function PuzzleTrainer() {
         <div className="progress-track">
           <div className="progress-fill" style={{ width: `${progress}%` }} />
         </div>
+        <div className="puzzle-quickbar">
+          <button className="btn" onClick={() => loadByIndex(index)}>↺ Retry</button>
+          <button className="btn primary" onClick={() => gotoPos(pos + 1)}>Next puzzle →</button>
+        </div>
       </div>
 
       <div className="side-col">
