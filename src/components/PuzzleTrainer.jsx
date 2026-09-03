@@ -2,6 +2,18 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { Chess } from 'chess.js';
 import Board from './Board.jsx';
 import { PUZZLES, puzzleRatingColor } from '../data/puzzles.js';
+import { LICHESS_PUZZLES } from '../data/puzzlesLichess.js';
+
+const ALL = [...PUZZLES, ...LICHESS_PUZZLES];
+
+const BANDS = [
+  { id: 'all', label: 'All', test: () => true },
+  { id: 'curated', label: '⭐ Curated', test: (_, i) => i < PUZZLES.length },
+  { id: 'easy', label: 'Beginner <800', test: (p) => p.rating < 800 },
+  { id: 'club', label: 'Club 800–1200', test: (p) => p.rating >= 800 && p.rating < 1200 },
+  { id: 'adv', label: 'Advanced 1200–1700', test: (p) => p.rating >= 1200 && p.rating < 1700 },
+  { id: 'expert', label: 'Expert 1700+', test: (p) => p.rating >= 1700 },
+];
 
 function loadStats() {
   try {
@@ -11,9 +23,20 @@ function loadStats() {
   }
 }
 
+function shuffled(arr) {
+  const a = arr.slice();
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
 export default function PuzzleTrainer() {
-  const [index, setIndex] = useState(0);
-  const [fen, setFen] = useState(PUZZLES[0].fen);
+  const [queue, setQueue] = useState(() => ALL.map((_, i) => i));
+  const [pos, setPos] = useState(0);
+  const [band, setBand] = useState('all');
+  const [fen, setFen] = useState(ALL[0].fen);
   const [ply, setPly] = useState(0); // next solution index to match
   const [mistakes, setMistakes] = useState(0);
   const [solved, setSolved] = useState(false);
@@ -23,25 +46,25 @@ export default function PuzzleTrainer() {
   const [stats, setStats] = useState(loadStats);
   const [history, setHistory] = useState([]);
   const busy = useRef(false);
-  const gameRef = useRef(new Chess(PUZZLES[0].fen));
+  const gameRef = useRef(new Chess(ALL[0].fen));
 
-  const puzzle = PUZZLES[index];
-  const solvedCount = useMemo(() => PUZZLES.filter((p) => stats[p.id]?.solved).length, [stats]);
+  const index = queue[pos] ?? 0;
+  const puzzle = ALL[index];
+  const solvedCount = useMemo(() => ALL.filter((p) => stats[p.id]?.solved).length, [stats]);
   const rating = useMemo(() => {
     let r = 800;
-    for (const p of PUZZLES) {
+    for (const p of ALL) {
       const s = stats[p.id];
-      if (s?.solved) r += 12;
-      if (s?.failed) r -= 6;
+      if (s?.solved) r += 2;
+      if (s?.failed) r -= 1;
     }
     return Math.max(200, r);
   }, [stats]);
 
-  const loadPuzzle = (i) => {
-    const p = PUZZLES[(i + PUZZLES.length) % PUZZLES.length];
+  const loadByIndex = (absIdx) => {
+    const p = ALL[absIdx];
     gameRef.current = new Chess(p.fen);
     busy.current = false;
-    setIndex(PUZZLES.indexOf(p));
     setFen(p.fen);
     setPly(0);
     setMistakes(0);
@@ -52,8 +75,25 @@ export default function PuzzleTrainer() {
     setHistory([]);
   };
 
+  const gotoPos = (newPos) => {
+    const q = queue;
+    const wrapped = ((newPos % q.length) + q.length) % q.length;
+    setPos(wrapped);
+    loadByIndex(q[wrapped]);
+  };
+
+  const applyBand = (bandId, reshuffle = false) => {
+    const b = BANDS.find((x) => x.id === bandId) ?? BANDS[0];
+    let idxs = ALL.map((_, i) => i).filter((i) => b.test(ALL[i], i));
+    if (reshuffle) idxs = shuffled(idxs);
+    setBand(bandId);
+    setQueue(idxs);
+    setPos(0);
+    loadByIndex(idxs[0] ?? 0);
+  };
+
   useEffect(() => {
-    loadPuzzle(0);
+    loadByIndex(0);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -72,8 +112,14 @@ export default function PuzzleTrainer() {
   const sanOf = (uci) =>
     uci.slice(0, 2).toUpperCase() + '→' + uci.slice(2, 4).toUpperCase();
 
+  const solveIt = (msg = 'Brilliant! Puzzle solved. 🎉') => {
+    setSolved(true);
+    setMessage(msg);
+    persist(puzzle.id, { solved: true });
+  };
+
   const handleMove = (from, to) => {
-    const p = PUZZLES[index];
+    const p = ALL[index];
     if (solved || busy.current) return false;
     const expected = p.solution[ply];
     if (!expected) return false;
@@ -81,6 +127,25 @@ export default function PuzzleTrainer() {
     const attempt = (from + to).toLowerCase();
     const want = expected.slice(0, 4).toLowerCase();
     if (attempt !== want) {
+      // Mate-in-1 puzzles can have several solutions — accept any move that mates.
+      if (p.solution.length === 1) {
+        try {
+          const test = new Chess(gameRef.current.fen());
+          test.move({ from, to, promotion: 'q' });
+          if (test.isCheckmate()) {
+            gameRef.current.move({ from, to, promotion: 'q' });
+            setPly(1);
+            setFen(gameRef.current.fen());
+            setHistory(gameRef.current.history());
+            setHintArrow([]);
+            setFailedFlash([]);
+            solveIt('Brilliant — an alternative mate! 🎉');
+            return true;
+          }
+        } catch {
+          /* fall through to wrong-move handling */
+        }
+      }
       setMistakes((m) => m + 1);
       setFailedFlash([from]);
       setMessage('Not quite — try again.');
@@ -90,13 +155,11 @@ export default function PuzzleTrainer() {
     }
 
     // Correct move
-    let mv = null;
     try {
-      mv = gameRef.current.move({ from, to, promotion: 'q' });
+      gameRef.current.move({ from, to, promotion: 'q' });
     } catch {
       return false;
     }
-    void mv;
     const nextPly = ply + 1;
     setPly(nextPly);
     setFen(gameRef.current.fen());
@@ -105,9 +168,7 @@ export default function PuzzleTrainer() {
     setFailedFlash([]);
 
     if (nextPly >= p.solution.length) {
-      setSolved(true);
-      setMessage('Brilliant! Puzzle solved. 🎉');
-      persist(p.id, { solved: true });
+      solveIt();
       return true;
     }
     // Opponent auto-reply
@@ -124,14 +185,8 @@ export default function PuzzleTrainer() {
       setFen(gameRef.current.fen());
       setHistory(gameRef.current.history());
       busy.current = false;
-      const done = nextPly + 1 >= p.solution.length;
-      if (done) {
-        setSolved(true);
-        setMessage('Brilliant! Puzzle solved. 🎉');
-        persist(p.id, { solved: true });
-      } else {
-        setMessage('Your move — finish it!');
-      }
+      if (nextPly + 1 >= p.solution.length) solveIt();
+      else setMessage('Your move — finish it!');
     }, 650);
     return true;
   };
@@ -207,10 +262,11 @@ export default function PuzzleTrainer() {
             <div className="puzzle-meta">
               <span className="pill" style={{ borderColor: puzzleRatingColor(puzzle.rating) }}>{puzzle.theme}</span>
               <span className="pill">★ {puzzle.rating}</span>
+              <span className="pill">{puzzle.side === 'w' ? 'White to move' : 'Black to move'}</span>
             </div>
           </div>
           <div className="streak-box">
-            <span className="streak-num">{solvedCount}/{PUZZLES.length}</span>
+            <span className="streak-num">{solvedCount}/{ALL.length}</span>
             <span className="muted small">solved</span>
             <span className="streak-num">~{rating}</span>
             <span className="muted small">puzzle rating</span>
@@ -233,7 +289,7 @@ export default function PuzzleTrainer() {
           </div>
           <div className="btn-row wrap">
             <button className="btn" onClick={showHint} disabled={solved}>💡 Hint</button>
-            <button className="btn" onClick={() => loadPuzzle(index)}>↺ Retry</button>
+            <button className="btn" onClick={() => loadByIndex(index)}>↺ Retry</button>
             <button className="btn" onClick={showSolution} disabled={solved}>👁 Solution</button>
           </div>
         </div>
@@ -243,7 +299,7 @@ export default function PuzzleTrainer() {
             <h3>✅ Why it works</h3>
             <p>{puzzle.explanation}</p>
             <div className="btn-row">
-              <button className="btn primary" onClick={() => loadPuzzle(index + 1)}>Next puzzle →</button>
+              <button className="btn primary" onClick={() => gotoPos(pos + 1)}>Next puzzle →</button>
             </div>
           </div>
         )}
@@ -256,19 +312,30 @@ export default function PuzzleTrainer() {
         )}
 
         <div className="card">
-          <h3>All puzzles</h3>
-          <div className="puzzle-list">
-            {PUZZLES.map((p, i) => (
-              <button key={p.id} className={`puzzle-item ${i === index ? 'active' : ''}`} onClick={() => loadPuzzle(i)}>
-                <span className="puzzle-check">{stats[p.id]?.solved ? '✅' : `${i + 1}.`}</span>
-                <span className="puzzle-name">{p.title}</span>
-                <span className="pill small" style={{ borderColor: puzzleRatingColor(p.rating) }}>{p.rating}</span>
+          <h3>Puzzles <span className="muted small">{queue.length} in view</span></h3>
+          <div className="btn-row wrap era-row">
+            {BANDS.map((b) => (
+              <button key={b.id} className={`btn small-btn ${band === b.id ? 'primary' : ''}`} onClick={() => applyBand(b.id)}>
+                {b.label}
               </button>
             ))}
+            <button className="btn small-btn" onClick={() => applyBand(band, true)}>🔀 Shuffle</button>
+          </div>
+          <div className="puzzle-list">
+            {queue.map((qi, qi2) => {
+              const p = ALL[qi];
+              return (
+                <button key={p.id} className={`puzzle-item ${qi === index ? 'active' : ''}`} onClick={() => { setPos(qi2); loadByIndex(qi); }}>
+                  <span className="puzzle-check">{stats[p.id]?.solved ? '✅' : `${qi2 + 1}.`}</span>
+                  <span className="puzzle-name">{p.title}</span>
+                  <span className="pill small" style={{ borderColor: puzzleRatingColor(p.rating) }}>{p.rating}</span>
+                </button>
+              );
+            })}
           </div>
           <div className="btn-row">
-            <button className="btn" onClick={() => loadPuzzle(index - 1)}>← Prev</button>
-            <button className="btn" onClick={() => loadPuzzle(index + 1)}>Next →</button>
+            <button className="btn" onClick={() => gotoPos(pos - 1)}>← Prev</button>
+            <button className="btn" onClick={() => gotoPos(pos + 1)}>Next →</button>
           </div>
         </div>
       </div>

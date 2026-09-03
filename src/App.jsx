@@ -7,7 +7,7 @@ import './App.css';
 
 const TABS = [
   { id: 'play', label: '♞ Play Engine', desc: 'Challenge Stockfish at 5 levels' },
-  { id: 'puzzles', label: '🧩 Puzzles', desc: '10 hand-picked mates & tactics' },
+  { id: 'puzzles', label: '🧩 Puzzles', desc: '510 mates & tactics' },
   { id: 'learn', label: '🎓 Openings Coach', desc: '12 repertoires with arrows' },
   { id: 'games', label: '🏛 Famous Games', desc: '100 classics, every move explained' },
 ];

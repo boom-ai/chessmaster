@@ -1,13 +1,16 @@
 // Verifies every puzzle line: legal moves, correct turn order, final checkmate.
 import { Chess } from 'chess.js';
 import { PUZZLES } from '../src/data/puzzles.js';
+import { LICHESS_PUZZLES } from '../src/data/puzzlesLichess.js';
 
 function uciToMove(uci) {
   return { from: uci.slice(0, 2), to: uci.slice(2, 4), promotion: uci.length > 4 ? uci[4] : undefined };
 }
 
+const VERBOSE = process.argv.includes('--verbose');
 let failures = 0;
-for (const p of PUZZLES) {
+let checked = 0;
+for (const p of [...PUZZLES, ...LICHESS_PUZZLES]) {
   const game = new Chess(p.fen);
   const expectedSide = p.side;
   if (game.turn() !== expectedSide) {
@@ -32,7 +35,7 @@ for (const p of PUZZLES) {
       return;
     }
     const tag = i % 2 === 0 ? 'player' : 'reply ';
-    console.log(`  ${p.id} [${tag}] ${uci} -> ${mv.san} | fen: ${game.fen()}`);
+    if (VERBOSE) console.log(`  ${p.id} [${tag}] ${uci} -> ${mv.san} | fen: ${game.fen()}`);
   });
   if (!ok) {
     failures++;
@@ -42,8 +45,10 @@ for (const p of PUZZLES) {
     console.log(`FAIL ${p.id}: final position is NOT checkmate (game over=${game.isGameOver()})`);
     failures++;
   } else {
-    console.log(`OK ${p.id}: ends in checkmate. Final FEN: ${game.fen()}`);
+    checked++;
+    if (VERBOSE) console.log(`OK ${p.id}: ends in checkmate. Final FEN: ${game.fen()}`);
   }
 }
+console.log(`checked=${checked} failures=${failures}`);
 console.log(failures === 0 ? '\nALL PUZZLES VERIFIED ✔' : `\n${failures} PUZZLE(S) FAILED ✘`);
 process.exit(failures === 0 ? 0 : 1);

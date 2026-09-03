@@ -129,5 +129,6 @@ export const PUZZLES = [
 export function puzzleRatingColor(rating) {
   if (rating < 600) return '#4ade80';
   if (rating < 1000) return '#facc15';
-  return '#fb7185';
+  if (rating < 1700) return '#fb7185';
+  return '#c084fc';
 }
