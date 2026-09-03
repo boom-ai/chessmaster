@@ -31,7 +31,21 @@ export default function PlayVsEngine() {
   const [result, setResult] = useState(null);
   const [hintsUsed, setHintsUsed] = useState(0);
   const [history, setHistory] = useState([]);
+  const [verboseHist, setVerboseHist] = useState([]);
+  const [reviewing, setReviewing] = useState(false);
+  const [reviewPly, setReviewPly] = useState(0);
+  const [isFullscreen, setIsFullscreen] = useState(false);
   const searchId = useRef(0);
+  const wrapRef = useRef(null);
+  // Mirrors to avoid stale closures in timeouts/engine callbacks
+  const playerColorRef = useRef('w');
+  const thinkingRef = useRef(false);
+  const resultRef = useRef(null);
+
+  const setThinkingBoth = (v) => {
+    thinkingRef.current = v;
+    setThinking(v);
+  };
 
   const level = useMemo(() => LEVELS.find((l) => l.id === levelId), [levelId]);
   const orientation = playerColor === 'w' ? 'white' : 'black';
@@ -51,24 +65,34 @@ export default function PlayVsEngine() {
     };
   }, []);
 
+  // Fullscreen tracking
+  useEffect(() => {
+    const onFs = () => setIsFullscreen(!!document.fullscreenElement);
+    document.addEventListener('fullscreenchange', onFs);
+    return () => document.removeEventListener('fullscreenchange', onFs);
+  }, []);
+
   const sync = () => {
     const g = gameRef.current;
     setFen(g.fen());
     setHistory(g.history());
+    setVerboseHist(g.history({ verbose: true }));
+    let r = null;
     if (g.isCheckmate()) {
-      setResult(g.turn() === playerColor ? 'Checkmate — engine wins.' : 'Checkmate — you win! 🎉');
-    } else if (g.isStalemate()) setResult('Draw — stalemate.');
-    else if (g.isThreefoldRepetition()) setResult('Draw — threefold repetition.');
-    else if (g.isInsufficientMaterial()) setResult('Draw — insufficient material.');
-    else if (g.isDraw()) setResult('Draw.');
-    else setResult(null);
+      r = g.turn() === playerColorRef.current ? 'Checkmate — engine wins.' : 'Checkmate — you win! 🎉';
+    } else if (g.isStalemate()) r = 'Draw — stalemate.';
+    else if (g.isThreefoldRepetition()) r = 'Draw — threefold repetition.';
+    else if (g.isInsufficientMaterial()) r = 'Draw — insufficient material.';
+    else if (g.isDraw()) r = 'Draw.';
+    resultRef.current = r;
+    setResult(r);
   };
 
   const requestEngineMove = (fenSnapshot) => {
     const engine = getEngine();
     const lvl = LEVELS.find((l) => l.id === levelId) ?? LEVELS[1];
     const id = ++searchId.current;
-    setThinking(true);
+    setThinkingBoth(true);
     const go = async () => {
       // Occasional deliberate blunder on easy levels (human-like)
       if (lvl.blunder > 0 && Math.random() < lvl.blunder) {
@@ -87,7 +111,7 @@ export default function PlayVsEngine() {
         if (searchId.current !== id) return;
         applyEngineMove(m, fenSnapshot);
       } catch {
-        if (searchId.current === id) setThinking(false);
+        if (searchId.current === id) setThinkingBoth(false);
       }
     };
     // Small delay so the player's move visibly lands first
@@ -97,7 +121,7 @@ export default function PlayVsEngine() {
   const applyEngineMove = (m, fenSnapshot) => {
     const g = gameRef.current;
     if (!m || g.fen() !== fenSnapshot || g.isGameOver()) {
-      setThinking(false);
+      setThinkingBoth(false);
       return;
     }
     try {
@@ -106,13 +130,14 @@ export default function PlayVsEngine() {
     } catch {
       /* ignore illegal engine replies */
     }
-    setThinking(false);
+    setThinkingBoth(false);
+    setReviewing(false);
     sync();
   };
 
   const handleMove = (from, to) => {
     const g = gameRef.current;
-    if (result || thinking || g.turn() !== playerColor) return false;
+    if (resultRef.current || thinkingRef.current || g.turn() !== playerColorRef.current) return false;
     let move = null;
     try {
       move = g.move({ from, to });
@@ -126,58 +151,109 @@ export default function PlayVsEngine() {
     void move;
     setHintArrow([]);
     setLastMove([from, to]);
+    setReviewing(false);
     sync();
     if (!g.isGameOver()) requestEngineMove(g.fen());
     return true;
   };
 
-  const newGame = (color = playerColor) => {
+  const newGame = (color = playerColorRef.current) => {
     searchId.current += 1;
     getEngine().stop();
-    setThinking(false);
+    setThinkingBoth(false);
     gameRef.current = new Chess();
+    playerColorRef.current = color;
     setPlayerColor(color);
     setLastMove([]);
     setHintArrow([]);
     setEvalMate(null);
     setEvalCp(20);
     setHintsUsed(0);
-    setResult(null);
-    setHistory([]);
-    setFen(gameRef.current.fen());
+    setReviewing(false);
+    setReviewPly(0);
+    sync();
     if (color === 'b') requestEngineMove(gameRef.current.fen());
+  };
+
+  // THE FLIP FIX: after swapping sides, wake the engine if it is its turn.
+  const flipBoard = () => {
+    const newColor = playerColorRef.current === 'w' ? 'b' : 'w';
+    playerColorRef.current = newColor;
+    setPlayerColor(newColor);
+    const g = gameRef.current;
+    if (!g.isGameOver() && !resultRef.current && g.turn() !== newColor && !thinkingRef.current) {
+      requestEngineMove(g.fen());
+    }
   };
 
   const undo = () => {
     searchId.current += 1;
     getEngine().stop();
-    setThinking(false);
+    setThinkingBoth(false);
     const g = gameRef.current;
     if (g.history().length === 0) return;
     g.undo();
-    if (g.turn() !== playerColor && g.history().length > 0) g.undo();
+    if (g.turn() !== playerColorRef.current && g.history().length > 0) g.undo();
     const h = g.history({ verbose: true });
     const last = h[h.length - 1];
     setLastMove(last ? [last.from, last.to] : []);
     setHintArrow([]);
+    setReviewing(false);
     sync();
   };
 
   const hint = async () => {
     const g = gameRef.current;
-    if (result || thinking || g.turn() !== playerColor) return;
-    setThinking(true);
+    if (resultRef.current || thinkingRef.current || g.turn() !== playerColorRef.current || reviewing) return;
+    setThinkingBoth(true);
     try {
       const m = await getEngine().getBestMove(g.fen(), { depth: 8, movetime: 500, skill: 15 });
       setHintArrow([{ startSquare: m.from, endSquare: m.to, color: '#3b82f6' }]);
       setHintsUsed((n) => n + 1);
       setTimeout(() => setHintArrow([]), 3000);
     } finally {
-      setThinking(false);
+      setThinkingBoth(false);
+    }
+  };
+
+  // ---- Game review ----
+  const startReview = () => {
+    if (verboseHist.length === 0) return;
+    setReviewPly(verboseHist.length);
+    setReviewing(true);
+  };
+  const reviewFen = useMemo(() => {
+    if (!reviewing) return null;
+    const g = new Chess();
+    for (let i = 0; i < Math.min(reviewPly, verboseHist.length); i++) {
+      const m = verboseHist[i];
+      try {
+        g.move({ from: m.from, to: m.to, promotion: m.promotion });
+      } catch {
+        break;
+      }
+    }
+    return g.fen();
+  }, [reviewing, reviewPly, verboseHist]);
+  const reviewMove = reviewing && reviewPly > 0 ? verboseHist[reviewPly - 1] : null;
+
+  // ---- Fullscreen ----
+  const toggleFullscreen = async () => {
+    try {
+      if (document.fullscreenElement) {
+        await document.exitFullscreen();
+      } else {
+        const el = wrapRef.current ?? document.documentElement;
+        if (el.requestFullscreen) await el.requestFullscreen();
+        else if (el.webkitRequestFullscreen) el.webkitRequestFullscreen();
+      }
+    } catch {
+      /* fullscreen unsupported — ignore */
     }
   };
 
   const statusText = () => {
+    if (reviewing) return `Reviewing move ${reviewPly} / ${verboseHist.length}. Exit review to continue playing.`;
     if (result) return result;
     const g = gameRef.current;
     if (thinking) return 'Engine is thinking…';
@@ -191,14 +267,27 @@ export default function PlayVsEngine() {
   }
 
   const pct = evalToWhitePct(evalCp, evalMate);
-  const arrows = hintArrow.length
+  const liveArrows = hintArrow.length
     ? hintArrow
     : lastMove.length
       ? [{ startSquare: lastMove[0], endSquare: lastMove[1], color: '#eab308' }]
       : [];
+  const arrows = reviewing && reviewMove
+    ? [{ startSquare: reviewMove.from, endSquare: reviewMove.to, color: '#eab308' }]
+    : liveArrows;
+  const highlights = reviewing && reviewMove ? [reviewMove.from, reviewMove.to] : lastMove;
+  const displayFen = reviewing && reviewFen ? reviewFen : fen;
+
+  const resign = () => {
+    searchId.current += 1;
+    getEngine().stop();
+    setThinkingBoth(false);
+    resultRef.current = 'You resigned. Engine wins.';
+    setResult(resultRef.current);
+  };
 
   return (
-    <div className="play-layout">
+    <div ref={wrapRef} className={`play-layout ${isFullscreen ? 'is-fullscreen' : ''}`}>
       <div className="board-col">
         <div className="eval-row">
           <div className="eval-bar" title="Engine evaluation">
@@ -208,19 +297,26 @@ export default function PlayVsEngine() {
             </span>
           </div>
           <Board
-            fen={fen}
+            fen={displayFen}
             orientation={orientation}
             arrows={arrows}
-            highlights={lastMove}
-            canDragPiece={({ square }) => {
+            highlights={highlights}
+            canDragPiece={reviewing ? undefined : ({ square }) => {
               if (result || thinking) return false;
               const g = gameRef.current;
               if (g.turn() !== playerColor) return false;
               const piece = g.get(square);
               return !!piece && piece.color === playerColor;
             }}
-            onMove={handleMove}
-            getLegalTargets={(sq) => gameRef.current.moves({ square: sq, verbose: true }).map((m) => m.to)}
+            onMove={reviewing ? undefined : handleMove}
+            getLegalTargets={(sq) => {
+              if (reviewing) return [];
+              try {
+                return gameRef.current.moves({ square: sq, verbose: true }).map((m) => m.to);
+              } catch {
+                return [];
+              }
+            }}
           />
         </div>
         <div className="status-line">
@@ -230,6 +326,16 @@ export default function PlayVsEngine() {
             {engineStatus === 'ready' ? '⚡ Stockfish' : engineStatus === 'fallback' ? '🧠 Local engine' : '⏳ Loading engine…'}
           </span>
         </div>
+        {reviewing && (
+          <div className="step-controls">
+            <button className="btn" onClick={() => setReviewPly(0)}>⏮ Start</button>
+            <button className="btn" onClick={() => setReviewPly((p) => Math.max(0, p - 1))}>← Prev</button>
+            <span className="step-count">Move {reviewPly} / {verboseHist.length}</span>
+            <button className="btn" onClick={() => setReviewPly((p) => Math.min(verboseHist.length, p + 1))}>Next →</button>
+            <button className="btn" onClick={() => setReviewPly(verboseHist.length)}>End ⏭</button>
+            <button className="btn primary" onClick={() => setReviewing(false)}>✕ Exit review</button>
+          </div>
+        )}
       </div>
 
       <div className="side-col">
@@ -247,7 +353,7 @@ export default function PlayVsEngine() {
                 className={`level ${l.id === levelId ? 'active' : ''}`}
                 onClick={() => {
                   setLevelId(l.id);
-                  newGame(playerColor);
+                  newGame(playerColorRef.current);
                 }}
               >
                 <span className="level-name">{l.name} <em>{l.elo}</em></span>
@@ -259,21 +365,35 @@ export default function PlayVsEngine() {
 
         <div className="card">
           <h3>Moves {hintsUsed > 0 && <span className="muted">• {hintsUsed} hint{hintsUsed > 1 ? 's' : ''}</span>}</h3>
-          <div className="moves">
+          <div className={`moves ${reviewing ? 'review-clickable' : ''}`}>
             {pairs.length === 0 && <span className="muted">No moves yet.</span>}
-            {pairs.map((p) => (
+            {pairs.map((p, pi) => (
               <div key={p.n} className="move-row">
                 <span className="move-n">{p.n}.</span>
-                <span>{p.w}</span>
-                <span>{p.b ?? ''}</span>
+                <span
+                  className={`move-cell ${reviewing && reviewPly === pi * 2 + 1 ? 'current' : ''}`}
+                  onClick={reviewing ? () => setReviewPly(pi * 2 + 1) : undefined}
+                >{p.w}</span>
+                <span
+                  className={`move-cell ${reviewing && reviewPly === pi * 2 + 2 ? 'current' : ''}`}
+                  onClick={reviewing && p.b ? () => setReviewPly(pi * 2 + 2) : undefined}
+                >{p.b ?? ''}</span>
               </div>
             ))}
           </div>
           <div className="btn-row wrap">
-            <button className="btn" onClick={undo} disabled={history.length === 0}>↩ Undo</button>
-            <button className="btn" onClick={hint} disabled={!!result || thinking}>💡 Hint</button>
-            <button className="btn" onClick={() => setPlayerColor((c) => (c === 'w' ? 'b' : 'w'))}>🔄 Flip</button>
-            <button className="btn danger" onClick={() => setResult('You resigned. Engine wins.')}>🏳 Resign</button>
+            <button className="btn" onClick={undo} disabled={history.length === 0 || thinking}>↩ Undo</button>
+            <button className="btn" onClick={hint} disabled={!!result || thinking || reviewing}>💡 Hint</button>
+            <button className="btn" onClick={flipBoard}>🔄 Flip</button>
+            <button className="btn" onClick={toggleFullscreen}>{isFullscreen ? '⛶ Exit full' : '⛶ Fullscreen'}</button>
+          </div>
+          <div className="btn-row wrap">
+            {!reviewing ? (
+              <button className="btn" onClick={startReview} disabled={history.length === 0}>🔍 Review game</button>
+            ) : (
+              <button className="btn primary" onClick={() => setReviewing(false)}>▶ Back to live game</button>
+            )}
+            <button className="btn danger" onClick={resign} disabled={!!result}>🏳 Resign</button>
           </div>
           <p className="muted small">Promotions auto-queen. Drag or tap a piece, then tap its destination.</p>
         </div>
