@@ -3,13 +3,15 @@ import PlayVsEngine from './components/PlayVsEngine.jsx';
 import PuzzleTrainer from './components/PuzzleTrainer.jsx';
 import OpeningsTeacher from './components/OpeningsTeacher.jsx';
 import FamousGames from './components/FamousGames.jsx';
+import Guide from './components/Guide.jsx';
 import './App.css';
 
 const TABS = [
-  { id: 'play', label: '♞ Play Engine', desc: 'Challenge Stockfish at 5 levels' },
+  { id: 'play', label: '♞ Play Engine', desc: 'Challenge Stockfish at 5 levels • Bullet to Rapid clocks' },
   { id: 'puzzles', label: '🧩 Puzzles', desc: '510 mates & tactics' },
   { id: 'learn', label: '🎓 Openings Coach', desc: '12 repertoires with arrows' },
   { id: 'games', label: '🏛 Famous Games', desc: '100 classics, every move explained' },
+  { id: 'guide', label: '📚 Guide', desc: 'Notation, pieces & rules' },
 ];
 
 export default function App() {
@@ -83,6 +85,7 @@ export default function App() {
         {tab === 'puzzles' && <PuzzleTrainer />}
         {tab === 'learn' && <OpeningsTeacher />}
         {tab === 'games' && <FamousGames />}
+        {tab === 'guide' && <Guide />}
       </main>
       <footer className="footer">
         <span>Engine: Stockfish 10 (WASM, runs fully offline in your browser) with a built-in fallback • Positions & lines verified with chess.js</span>

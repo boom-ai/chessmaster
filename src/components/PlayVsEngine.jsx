@@ -415,19 +415,6 @@ export default function PlayVsEngine() {
           </span>
         </div>
         {playerBar(topColor)}
-        {isFullscreen && (
-          <div className="fs-bar">
-            <button className="btn small-btn" onClick={undo} disabled={history.length === 0 || thinking}>↩ Undo</button>
-            <button className="btn small-btn" onClick={hint} disabled={!!result || thinking || reviewing}>💡 Hint</button>
-            <button className="btn small-btn" onClick={flipBoard}>🔄 Flip</button>
-            {!reviewing ? (
-              <button className="btn small-btn" onClick={startReview} disabled={history.length === 0}>🔍 Review</button>
-            ) : (
-              <button className="btn small-btn primary" onClick={() => setReviewing(false)}>▶ Live</button>
-            )}
-            <button className="btn small-btn" onClick={toggleFullscreen}>⛶ Exit</button>
-          </div>
-        )}
         <div className="eval-row">
           <div className="eval-bar" title="Engine evaluation">
             <div className="eval-fill" style={{ height: `${100 - pct}%` }} />
@@ -459,6 +446,17 @@ export default function PlayVsEngine() {
           />
         </div>
         {playerBar(bottomColor)}
+        <div className="quick-actions">
+          <button className="btn" onClick={undo} disabled={history.length === 0 || thinking}>↩ Undo</button>
+          <button className="btn" onClick={hint} disabled={!!result || thinking || reviewing}>💡 Hint</button>
+          <button className="btn" onClick={flipBoard}>🔄 Flip</button>
+          {!reviewing ? (
+            <button className="btn" onClick={startReview} disabled={history.length === 0}>🔍 Review</button>
+          ) : (
+            <button className="btn primary" onClick={() => setReviewing(false)}>▶ Live</button>
+          )}
+          <button className="btn" onClick={toggleFullscreen}>{isFullscreen ? '⛶ Exit' : '⛶ Full'}</button>
+        </div>
         {reviewing && (
           <div className="step-controls">
             <button className="btn" onClick={() => setReviewPly(0)}>⏮ Start</button>
