@@ -86,4 +86,8 @@
   .menu-btn { display: grid; place-items: center; }
   .tabs { display: none; }
   .main { padding-top: 14px; padding-bottom: 14px; }
+  /* Board + lesson first on phones: list of 100 items moves below. */
+  .learn-layout > .board-col { order: -2; }
+  .learn-layout > .side-col { order: -1; }
+  .learn-layout > .open-list { order: 0; }
 }

@@ -3,16 +3,18 @@ import { Chess } from 'chess.js';
 import Board from './Board.jsx';
 import { PUZZLES, puzzleRatingColor } from '../data/puzzles.js';
 import { LICHESS_PUZZLES } from '../data/puzzlesLichess.js';
+import { toPlain } from '../data/cmPlainWords.js';
+import { awardStar } from '../utils/cmProgressStore.js';
 
 const ALL = [...PUZZLES, ...LICHESS_PUZZLES];
 
 const BANDS = [
   { id: 'all', label: 'All', test: () => true },
   { id: 'curated', label: '⭐ Curated', test: (_, i) => i < PUZZLES.length },
-  { id: 'easy', label: 'Beginner <800', test: (p) => p.rating < 800 },
-  { id: 'club', label: 'Club 800–1200', test: (p) => p.rating >= 800 && p.rating < 1200 },
-  { id: 'adv', label: 'Advanced 1200–1700', test: (p) => p.rating >= 1200 && p.rating < 1700 },
-  { id: 'expert', label: 'Expert 1700+', test: (p) => p.rating >= 1700 },
+  { id: 'easy', label: 'Easy', test: (p) => p.rating < 800 },
+  { id: 'club', label: 'Medium', test: (p) => p.rating >= 800 && p.rating < 1200 },
+  { id: 'adv', label: 'Hard', test: (p) => p.rating >= 1200 && p.rating < 1700 },
+  { id: 'expert', label: 'Very hard', test: (p) => p.rating >= 1700 },
 ];
 
 function loadStats() {
@@ -116,6 +118,7 @@ export default function PuzzleTrainer() {
     setSolved(true);
     setMessage(msg);
     persist(puzzle.id, { solved: true });
+    try { awardStar('first-tactics'); } catch { /* ignore */ }
   };
 
   const handleMove = (from, to) => {
@@ -195,7 +198,7 @@ export default function PuzzleTrainer() {
     const expected = puzzle.solution[ply];
     if (!expected || solved) return;
     setHintArrow([{ startSquare: expected.slice(0, 2), endSquare: expected.slice(2, 4), color: '#3b82f6' }]);
-    setMessage(`Hint: think about ${sanOf(expected)}.`);
+    setMessage(`Hint: think about ${toPlain(expected)}.`);
     setTimeout(() => setHintArrow([]), 2500);
   };
 

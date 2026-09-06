@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Chess } from 'chess.js';
 import Board from './Board.jsx';
+import { awardStar } from '../utils/cmProgressStore.js';
 import { getEngine } from '../engine/stockfish.js';
 import { randomMove } from '../engine/fallbackEngine.js';
 
@@ -111,6 +112,7 @@ export default function PlayVsEngine() {
       : 'Flag! Engine ran out of time — you win! 🎉';
     resultRef.current = r;
     setResult(r);
+    if (r) { try { awardStar('playbook-review'); } catch { /* ignore */ } }
   };
 
   // Clock ticker — pauses while reviewing or after game end
@@ -148,6 +150,7 @@ export default function PlayVsEngine() {
     else if (g.isDraw()) r = 'Draw.';
     resultRef.current = r;
     setResult(r);
+    if (r) { try { awardStar('playbook-review'); } catch { /* ignore */ } }
   };
 
   const requestEngineMove = (fenSnapshot) => {
@@ -447,16 +450,27 @@ export default function PlayVsEngine() {
         </div>
         {playerBar(bottomColor)}
         <div className="quick-actions">
-          <button className="btn" title="Undo move" aria-label="Undo move" onClick={undo} disabled={history.length === 0 || thinking}>↩</button>
-          <button className="btn" title="Hint" aria-label="Hint" onClick={hint} disabled={!!result || thinking || reviewing}>💡</button>
-          <button className="btn" title="Flip board" aria-label="Flip board" onClick={flipBoard}>🔄</button>
+          <button className="btn" title="Undo move" aria-label="Undo move" onClick={undo} disabled={history.length === 0 || thinking}>↩ Undo</button>
+          <button className="btn" title="Hint" aria-label="Hint" onClick={hint} disabled={!!result || thinking || reviewing}>💡 Hint</button>
+          <button className="btn" title="Flip board" aria-label="Flip board" onClick={flipBoard}>🔄 Flip</button>
           {!reviewing ? (
-            <button className="btn" title="Review game" aria-label="Review game" onClick={startReview} disabled={history.length === 0}>🔍</button>
+            <button className="btn" title="Review game" aria-label="Review game" onClick={startReview} disabled={history.length === 0}>🔍 Review</button>
           ) : (
-            <button className="btn primary" title="Back to live game" aria-label="Back to live game" onClick={() => setReviewing(false)}>▶</button>
+            <button className="btn primary" title="Back to live game" aria-label="Back to live game" onClick={() => setReviewing(false)}>▶ Live</button>
           )}
-          <button className="btn" title={isFullscreen ? 'Exit fullscreen' : 'Fullscreen'} aria-label={isFullscreen ? 'Exit fullscreen' : 'Fullscreen'} onClick={toggleFullscreen}>⛶</button>
+          <button className="btn" title={isFullscreen ? 'Exit fullscreen' : 'Fullscreen'} aria-label={isFullscreen ? 'Exit fullscreen' : 'Fullscreen'} onClick={toggleFullscreen}>⛶ Full</button>
         </div>
+        <span className="cm-controls-note" role="status">
+          {(() => {
+            if (evalMate != null) return (evalMate > 0 ? playerColor === 'w' : playerColor === 'b') ? 'You can force checkmate!' : 'Engine threatens checkmate — be careful!';
+            const mine = playerColor === 'w' ? evalCp : -evalCp;
+            const a = Math.abs(mine);
+            if (a < 60) return 'Even game — keep to your plan.';
+            if (a < 180) return mine > 0 ? 'You have a small edge.' : 'Engine has a small edge.';
+            if (a < 400) return mine > 0 ? 'You are ahead — trade pieces!' : 'Engine is ahead — look for tricks!';
+            return mine > 0 ? 'You are winning!' : 'Engine is winning — don’t give up!';
+          })()}
+        </span>
         {reviewing && (
           <div className="step-controls">
             <button className="btn" onClick={() => setReviewPly(0)}>⏮ Start</button>

@@ -2,6 +2,10 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { Chess } from 'chess.js';
 import Board from './Board.jsx';
 import { STRATEGY } from '../data/strategy.js';
+import { CmLearnAffordance } from './CmLearnAffordance.jsx';
+import { CmProgressBar } from './CmStars.jsx';
+import { awardStar } from '../utils/cmProgressStore.js';
+import { readAutoplayMs } from '../hooks/cmDisplayMode.js';
 
 function playUci(game, uci) {
   return game.move({ from: uci.slice(0, 2), to: uci.slice(2, 4), promotion: uci[4] });
@@ -99,7 +103,7 @@ export default function StrategyCoach({ phase }) {
           }
           return s + 1;
         });
-      }, 1400);
+      }, readAutoplayMs(1400));
     }
     return () => {
       if (autoTimer.current) clearInterval(autoTimer.current);
@@ -135,6 +139,7 @@ export default function StrategyCoach({ phase }) {
         } catch {
           /* ignore */
         }
+        try { awardStar(phase === 'middlegame' ? 'middlegame-toolkit' : 'key-endgames'); } catch { /* ignore */ }
         return next;
       });
       return;
@@ -215,6 +220,7 @@ export default function StrategyCoach({ phase }) {
     <div className="learn-layout">
       <aside className="open-list">
         <h3>{phase === 'middlegame' ? 'Middlegame' : phase === 'endgame' ? 'Endgame' : 'Strategy'} <span className="muted small">{doneCount}/{lessons.length} practiced</span></h3>
+        <CmProgressBar done={doneCount} total={lessons.length} />
         <input
           className="search-box"
           type="search"
@@ -249,6 +255,7 @@ export default function StrategyCoach({ phase }) {
       </aside>
 
       <div className="board-col">
+        <CmLearnAffordance mode="learn" stepIndex={practice ? 1 : step} onStartPractice={startPractice} />
         <Board
           fen={boardFen}
           orientation={orientation}

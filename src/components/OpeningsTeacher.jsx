@@ -2,6 +2,10 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { Chess } from 'chess.js';
 import Board from './Board.jsx';
 import { OPENINGS, getOpening } from '../data/openings.js';
+import { CmLearnAffordance } from './CmLearnAffordance.jsx';
+import { CmProgressBar } from './CmStars.jsx';
+import { awardStar } from '../utils/cmProgressStore.js';
+import { readAutoplayMs } from '../hooks/cmDisplayMode.js';
 
 function replay(ucis, n) {
   const g = new Chess();
@@ -81,7 +85,7 @@ export default function OpeningsTeacher() {
           }
           return s + 1;
         });
-      }, 1400);
+      }, readAutoplayMs(1400));
     }
     return () => {
       if (autoTimer.current) clearInterval(autoTimer.current);
@@ -122,6 +126,7 @@ export default function OpeningsTeacher() {
         } catch {
           /* ignore */
         }
+        try { awardStar('opening-habits'); } catch { /* ignore */ }
         return next;
       });
       return;
@@ -193,6 +198,7 @@ export default function OpeningsTeacher() {
     <div className="learn-layout">
       <aside className="open-list">
         <h3>Repertoire <span className="muted small">{practicedCount}/{OPENINGS.length} practiced</span></h3>
+        <CmProgressBar done={practicedCount} total={OPENINGS.length} />
         <input
           className="search-box"
           type="search"
@@ -231,6 +237,7 @@ export default function OpeningsTeacher() {
       </aside>
 
       <div className="board-col">
+        <CmLearnAffordance mode="learn" stepIndex={practice ? 1 : step} onStartPractice={startPractice} />
         <Board
           fen={boardFen}
           orientation={orientation}

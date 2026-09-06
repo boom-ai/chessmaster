@@ -2,6 +2,8 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { Chess } from 'chess.js';
 import Board from './Board.jsx';
 import { FAMOUS_GAMES, getGame, gameEra } from '../data/games/index.js';
+import { awardStar } from '../utils/cmProgressStore.js';
+import { readAutoplayMs } from '../hooks/cmDisplayMode.js';
 
 function replay(game, n) {
   const g = new Chess();
@@ -84,7 +86,7 @@ export default function FamousGames() {
           }
           return s + 1;
         });
-      }, 1300);
+      }, readAutoplayMs(1300));
     }
     return () => {
       if (autoTimer.current) clearInterval(autoTimer.current);
@@ -92,6 +94,9 @@ export default function FamousGames() {
   }, [auto, game.moves.length, step]);
 
   const toggleStudied = () => {
+    if (!studied[gameId]) {
+      try { awardStar('annotated-classics'); } catch { /* ignore */ }
+    }
     setStudied((prev) => {
       const next = { ...prev };
       if (next[gameId]) delete next[gameId];

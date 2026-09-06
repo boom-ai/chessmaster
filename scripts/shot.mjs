@@ -14,11 +14,11 @@ page.on('pageerror', (e) => console.log('PAGEERROR:', e.message));
 await page.goto('http://127.0.0.1:4173/', { waitUntil: 'networkidle' });
 await page.waitForTimeout(2500);
 
-const tabs = ['play', 'puzzles', 'learn', 'games'];
+const tabs = ['start', 'play', 'puzzles', 'learn', 'middlegame', 'endgame', 'games', 'guide'];
 for (const t of tabs) {
   await page.evaluate((tab) => {
     const btns = [...document.querySelectorAll('.tab')];
-    const map = { play: 0, puzzles: 1, learn: 2, games: 3 };
+    const map = { start: 0, play: 1, puzzles: 2, learn: 3, middlegame: 4, endgame: 5, games: 6, guide: 7 };
     btns[map[tab]]?.click();
   }, t);
   await page.waitForTimeout(1500);
