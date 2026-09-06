@@ -8,7 +8,7 @@
     "build": "vite build",
     "lint": "oxlint",
     "preview": "vite preview",
-    "verify": "node scripts/verify-puzzles.mjs && node scripts/verify-openings.mjs && node scripts/verify-games.mjs"
+    "verify": "node scripts/verify-puzzles.mjs && node scripts/verify-openings.mjs && node scripts/verify-games.mjs && node scripts/verify-strategy.mjs"
   },
   "dependencies": {
     "chess.js": "^1.4.0",

@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import PlayVsEngine from './components/PlayVsEngine.jsx';
 import PuzzleTrainer from './components/PuzzleTrainer.jsx';
 import OpeningsTeacher from './components/OpeningsTeacher.jsx';
+import StrategyCoach from './components/StrategyCoach.jsx';
 import FamousGames from './components/FamousGames.jsx';
 import Guide from './components/Guide.jsx';
 import './App.css';
@@ -10,6 +11,7 @@ const TABS = [
   { id: 'play', label: '♞ Play Engine', desc: 'Challenge Stockfish at 5 levels • Bullet to Rapid clocks' },
   { id: 'puzzles', label: '🧩 Puzzles', desc: '510 mates & tactics' },
   { id: 'learn', label: '🎓 Openings Coach', desc: '12 repertoires with arrows' },
+  { id: 'strategy', label: '🧠 Strategy', desc: 'Middlegame plans & endgame technique' },
   { id: 'games', label: '🏛 Famous Games', desc: '100 classics, every move explained' },
   { id: 'guide', label: '📚 Guide', desc: 'Notation, pieces & rules' },
 ];
@@ -84,6 +86,7 @@ export default function App() {
         {tab === 'play' && <PlayVsEngine />}
         {tab === 'puzzles' && <PuzzleTrainer />}
         {tab === 'learn' && <OpeningsTeacher />}
+        {tab === 'strategy' && <StrategyCoach />}
         {tab === 'games' && <FamousGames />}
         {tab === 'guide' && <Guide />}
       </main>
