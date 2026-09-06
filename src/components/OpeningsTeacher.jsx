@@ -37,6 +37,7 @@ export default function OpeningsTeacher() {
   const [pDone, setPDone] = useState(false);
   const [progress, setProgress] = useState(loadProgress);
   const [auto, setAuto] = useState(false);
+  const [query, setQuery] = useState('');
   const pGame = useRef(new Chess());
   const autoTimer = useRef(null);
 
@@ -192,11 +193,22 @@ export default function OpeningsTeacher() {
     <div className="learn-layout">
       <aside className="open-list">
         <h3>Repertoire <span className="muted small">{practicedCount}/{OPENINGS.length} practiced</span></h3>
+        <input
+          className="search-box"
+          type="search"
+          placeholder="Search 100 openings…"
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          aria-label="Search openings"
+        />
         {[
           { color: 'w', title: '♔ White openings', desc: 'Play these as White' },
           { color: 'b', title: '♚ Black openings', desc: 'Play these as Black' },
         ].map((group) => {
-          const items = OPENINGS.filter((o) => o.forColor === group.color);
+          const q = query.trim().toLowerCase();
+          const items = OPENINGS.filter((o) => o.forColor === group.color)
+            .filter((o) => !q || o.name.toLowerCase().includes(q) || o.eco.toLowerCase().includes(q) || o.tagline.toLowerCase().includes(q));
+          if (q && items.length === 0) return null;
           const done = items.filter((o) => progress[o.id]?.practiced).length;
           return (
             <div key={group.color} className="open-group">

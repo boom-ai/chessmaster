@@ -11,9 +11,11 @@ const C = {
   purple: '#a855f7',
 };
 
+import { OPENINGS_EXTRA } from './openingsExtra.js';
+
 export const ARROW_COLORS = C;
 
-export const OPENINGS = [
+const OPENINGS_BASE = [
   {
     id: 'italian-game',
     name: 'Italian Game',
@@ -519,6 +521,8 @@ export const OPENINGS = [
     ],
   },
 ];
+
+export const OPENINGS = [...OPENINGS_BASE, ...OPENINGS_EXTRA];
 
 export function getOpening(id) {
   return OPENINGS.find((o) => o.id === id) ?? OPENINGS[0];

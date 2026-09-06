@@ -55,6 +55,7 @@ export default function StrategyCoach({ phase }) {
   const [pDone, setPDone] = useState(false);
   const [progress, setProgress] = useState(loadProgress);
   const [auto, setAuto] = useState(false);
+  const [query, setQuery] = useState('');
   const pGame = useRef(new Chess(lessons[0].drill?.startFen ?? new Chess().fen()));
   const autoTimer = useRef(null);
 
@@ -214,8 +215,18 @@ export default function StrategyCoach({ phase }) {
     <div className="learn-layout">
       <aside className="open-list">
         <h3>{phase === 'middlegame' ? 'Middlegame' : phase === 'endgame' ? 'Endgame' : 'Strategy'} <span className="muted small">{doneCount}/{lessons.length} practiced</span></h3>
+        <input
+          className="search-box"
+          type="search"
+          placeholder={`Search ${lessons.length} lessons…`}
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          aria-label="Search lessons"
+        />
         {groups.map((group) => {
-          const items = lessons.filter((l) => l.phase === group.phase);
+          const q = query.trim().toLowerCase();
+          const items = lessons.filter((l) => l.phase === group.phase)
+            .filter((l) => !q || l.title.toLowerCase().includes(q) || l.tagline.toLowerCase().includes(q));
           const done = items.filter((l) => progress[l.id]?.practiced).length;
           return (
             <div key={group.phase} className="open-group">

@@ -1,4 +1,10 @@
-// Strategy course: 15 middlegame + 15 endgame lessons.
+// Strategy course: 100 middlegame + 100 endgame lessons (base + generated parts).
+// mainline: coached line (UCIs from initial unless startFen set).
+// Each step: uci + explanation + optional arrows/highlights.
+// drill: { startFen, forColor, moves, about } — short practice line.
+// Endgame results (win/draw) verified vs tablebase; E8 drill ends in mate.
+import { STRATEGY_MID } from './strategyMid.js';
+import { STRATEGY_END } from './strategyEnd.js';
 // mainline: coached line (UCIs from initial unless startFen set).
 // Each step: uci + explanation + optional arrows/highlights.
 // drill: { startFen, forColor, moves, about } — short practice line.
@@ -12,7 +18,7 @@ const C = {
   purple: '#a855f7',
 };
 
-export const STRATEGY = [
+const STRATEGY_BASE = [
   // ================= MIDDLEGAME =================
   {
     id: 'm-iqp',
@@ -1067,3 +1073,5 @@ export const STRATEGY = [
     },
   },
 ];
+
+export const STRATEGY = [...STRATEGY_BASE, ...STRATEGY_MID, ...STRATEGY_END];

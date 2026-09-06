@@ -10,9 +10,9 @@ import './App.css';
 const TABS = [
   { id: 'play', label: '♞ Play Engine', desc: 'Challenge Stockfish at 5 levels • Bullet to Rapid clocks' },
   { id: 'puzzles', label: '🧩 Puzzles', desc: '510 mates & tactics' },
-  { id: 'learn', label: '🎓 Openings Coach', desc: '12 repertoires with arrows' },
-  { id: 'middlegame', label: '⚔️ Middlegame', desc: '15 plans & structures with drills' },
-  { id: 'endgame', label: '♔ Endgame', desc: '15 must-know techniques with drills' },
+  { id: 'learn', label: '🎓 Openings Coach', desc: '100 repertoires with arrows' },
+  { id: 'middlegame', label: '⚔️ Middlegame', desc: '100 plans, traps & tactics' },
+  { id: 'endgame', label: '♔ Endgame', desc: '100 techniques with drills' },
   { id: 'games', label: '🏛 Famous Games', desc: '100 classics, every move explained' },
   { id: 'guide', label: '📚 Guide', desc: 'Notation, pieces & rules' },
 ];
