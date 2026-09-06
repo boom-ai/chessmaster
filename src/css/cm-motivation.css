@@ -1,7 +1,7 @@
 .cm-stars-row { display: inline-flex; gap: 2px; font-size: 18px; line-height: 1; }
 .cm-star-on { color: #d97706; }
-.cm-progress-track { height: 8px; border-radius: 999px; background: #e5e7eb; overflow: hidden; }
-.cm-next-card { border: 1px solid #e5e7eb; border-radius: 12px; padding: 16px; background: #ffffff; }
+.cm-progress-track { height: 8px; border-radius: 999px; background: var(--border); overflow: hidden; }
+.cm-next-card { border: 1px solid var(--border); border-radius: 12px; padding: 16px; background: var(--card); }
 .cm-recap-print { display: none; margin-top: 12px; border-top: 1px dashed #9ca3af; padding-top: 8px; font-size: 14px; }
 @media print {
   body * { visibility: hidden; }
