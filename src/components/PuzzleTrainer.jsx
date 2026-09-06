@@ -5,19 +5,20 @@ import { TbCoachAcc, TbCoachAccItem } from './TbCoachAcc.jsx';
 import { TbActionBar } from './TbActionBar.jsx';
 import { UxSectionHeader } from '../ux-section/UxSection.jsx';
 import { PUZZLES, puzzleRatingColor } from '../data/puzzles.js';
-import { LICHESS_PUZZLES } from '../data/puzzlesLichess.js';
 import { toPlain } from '../data/cmPlainWords.js';
 import { awardStar } from '../utils/cmProgressStore.js';
 
-const ALL = [...PUZZLES, ...LICHESS_PUZZLES];
-
+// 3010 puzzles: 10 curated (bundled) + 500 classics + 5×500 by mate length,
+// each band lazy-loaded on demand so slow connections only fetch one ~230KB chunk.
+const TOTAL_PUZZLES = 10 + 500 + 5 * 500;
 const BANDS = [
-  { id: 'all', label: 'All', test: () => true },
-  { id: 'curated', label: '⭐ Curated', test: (_, i) => i < PUZZLES.length },
-  { id: 'easy', label: 'Easy', test: (p) => p.rating < 800 },
-  { id: 'club', label: 'Medium', test: (p) => p.rating >= 800 && p.rating < 1200 },
-  { id: 'adv', label: 'Hard', test: (p) => p.rating >= 1200 && p.rating < 1700 },
-  { id: 'expert', label: 'Very hard', test: (p) => p.rating >= 1700 },
+  { id: 'curated', label: '⭐ Curated', count: 10, load: async () => PUZZLES },
+  { id: 'm1', label: 'Mate in 1', count: 500, load: () => import('../data/puzzlesM1.js').then((m) => m.LICHESS_M1) },
+  { id: 'm2', label: 'Mate in 2', count: 500, load: () => import('../data/puzzlesM2.js').then((m) => m.LICHESS_M2) },
+  { id: 'm3', label: 'Mate in 3', count: 500, load: () => import('../data/puzzlesM3.js').then((m) => m.LICHESS_M3) },
+  { id: 'm4', label: 'Mate in 4', count: 500, load: () => import('../data/puzzlesM4.js').then((m) => m.LICHESS_M4) },
+  { id: 'm5', label: 'Mate in 5', count: 500, load: () => import('../data/puzzlesM5.js').then((m) => m.LICHESS_M5) },
+  { id: 'classics', label: 'Classics', count: 500, load: () => import('../data/puzzlesLichess.js').then((m) => m.LICHESS_PUZZLES) },
 ];
 
 function loadStats() {
@@ -38,10 +39,13 @@ function shuffled(arr) {
 }
 
 export default function PuzzleTrainer() {
-  const [queue, setQueue] = useState(() => ALL.map((_, i) => i));
+  const [pool, setPool] = useState(PUZZLES);
+  const [loading, setLoading] = useState(false);
+  const [queue, setQueue] = useState(() => PUZZLES.map((_, i) => i));
   const [pos, setPos] = useState(0);
-  const [band, setBand] = useState('all');
-  const [fen, setFen] = useState(ALL[0].fen);
+  const [band, setBand] = useState('curated');
+  const [listCap, setListCap] = useState(80);
+  const [fen, setFen] = useState(PUZZLES[0].fen);
   const [ply, setPly] = useState(0); // next solution index to match
   const [mistakes, setMistakes] = useState(0);
   const [solved, setSolved] = useState(false);
@@ -51,23 +55,24 @@ export default function PuzzleTrainer() {
   const [stats, setStats] = useState(loadStats);
   const [history, setHistory] = useState([]);
   const busy = useRef(false);
-  const gameRef = useRef(new Chess(ALL[0].fen));
+  const gameRef = useRef(new Chess(PUZZLES[0].fen));
 
   const index = queue[pos] ?? 0;
-  const puzzle = ALL[index];
-  const solvedCount = useMemo(() => ALL.filter((p) => stats[p.id]?.solved).length, [stats]);
+  const puzzle = pool[index];
+  const solvedCount = useMemo(() => pool.filter((p) => stats[p.id]?.solved).length, [stats, pool]);
   const rating = useMemo(() => {
     let r = 800;
-    for (const p of ALL) {
+    for (const p of pool) {
       const s = stats[p.id];
       if (s?.solved) r += 2;
       if (s?.failed) r -= 1;
     }
     return Math.max(200, r);
-  }, [stats]);
+  }, [stats, pool]);
 
-  const loadByIndex = (absIdx) => {
-    const p = ALL[absIdx];
+  const loadInto = (arr, absIdx) => {
+    const p = arr[absIdx];
+    if (!p) return;
     gameRef.current = new Chess(p.fen);
     busy.current = false;
     setFen(p.fen);
@@ -80,21 +85,37 @@ export default function PuzzleTrainer() {
     setHistory([]);
   };
 
+  const loadByIndex = (absIdx) => loadInto(pool, absIdx);
+
   const gotoPos = (newPos) => {
     const q = queue;
+    if (!q.length) return;
     const wrapped = ((newPos % q.length) + q.length) % q.length;
     setPos(wrapped);
     loadByIndex(q[wrapped]);
   };
 
-  const applyBand = (bandId, reshuffle = false) => {
+  const applyBand = async (bandId, reshuffle = false) => {
     const b = BANDS.find((x) => x.id === bandId) ?? BANDS[0];
-    let idxs = ALL.map((_, i) => i).filter((i) => b.test(ALL[i], i));
-    if (reshuffle) idxs = shuffled(idxs);
     setBand(bandId);
-    setQueue(idxs);
-    setPos(0);
-    loadByIndex(idxs[0] ?? 0);
+    setLoading(true);
+    setMessage('Loading puzzles…');
+    try {
+      const arr = await b.load();
+      if (!arr.length) {
+        setMessage('Download failed — check connection and try again.');
+        return;
+      }
+      let idxs = arr.map((_, i) => i);
+      if (reshuffle) idxs = shuffled(idxs);
+      setPool(arr);
+      setQueue(idxs);
+      setPos(0);
+      setListCap(80);
+      loadInto(arr, idxs[0] ?? 0);
+    } finally {
+      setLoading(false);
+    }
   };
 
   useEffect(() => {
@@ -125,7 +146,7 @@ export default function PuzzleTrainer() {
   };
 
   const handleMove = (from, to) => {
-    const p = ALL[index];
+    const p = pool[index];
     if (solved || busy.current) return false;
     const expected = p.solution[ply];
     if (!expected) return false;
@@ -236,10 +257,12 @@ export default function PuzzleTrainer() {
 
   const progress = Math.min(100, (ply / puzzle.solution.length) * 100);
 
+  const [drawerOpen, setDrawerOpen] = useState(false);
+
   return (
     <div className="play-layout tb-flow tb-lesson">
       <div style={{ gridColumn: '1 / -1' }}>
-        <UxSectionHeader eyebrow="Solve" title="Puzzles" sub="Find the winning move — tap Hint anytime, retry as often as you like." meta={`${solvedCount}/${ALL.length} solved`} />
+        <UxSectionHeader eyebrow="Solve" title="Puzzles" sub="Find the winning move — tap Hint anytime, retry as often as you like." meta={`${solvedCount}/${pool.length} in view • ${TOTAL_PUZZLES} total`} />
       </div>
       <div className="board-col tb-main tb-board tb-stick">
         <Board
@@ -281,7 +304,7 @@ export default function PuzzleTrainer() {
             </div>
           </div>
           <div className="streak-box">
-            <span className="streak-num">{solvedCount}/{ALL.length}</span>
+            <span className="streak-num">{solvedCount}/{pool.length}</span>
             <span className="muted small">solved</span>
             <span className="streak-num">~{rating}</span>
             <span className="muted small">puzzle rating</span>
@@ -337,18 +360,19 @@ export default function PuzzleTrainer() {
 
           <TbCoachAccItem title="Puzzles">
         <div className="card">
-          <h3>Puzzles <span className="muted small">{queue.length} in view</span></h3>
+          <h3>Puzzles <span className="muted small">{queue.length} in view • {TOTAL_PUZZLES} total</span></h3>
           <div className="btn-row wrap era-row">
             {BANDS.map((b) => (
-              <button key={b.id} className={`btn small-btn ${band === b.id ? 'primary' : ''}`} onClick={() => applyBand(b.id)}>
-                {b.label}
+              <button key={b.id} className={`btn small-btn ${band === b.id ? 'primary' : ''}`} onClick={() => applyBand(b.id)} disabled={loading}>
+                {b.label} ({b.count})
               </button>
             ))}
-            <button className="btn small-btn" onClick={() => applyBand(band, true)}>🔀 Shuffle</button>
+            <button className="btn small-btn" onClick={() => applyBand(band, true)} disabled={loading}>🔀 Shuffle</button>
           </div>
+          {loading && <p className="muted small">Loading puzzles… (one small download, then cached)</p>}
           <div className="puzzle-list">
-            {queue.map((qi, qi2) => {
-              const p = ALL[qi];
+            {queue.slice(0, listCap).map((qi, qi2) => {
+              const p = pool[qi];
               return (
                 <button key={p.id} className={`puzzle-item ${qi === index ? 'active' : ''}`} onClick={() => { setPos(qi2); loadByIndex(qi); }}>
                   <span className="puzzle-check">{stats[p.id]?.solved ? '✅' : `${qi2 + 1}.`}</span>
@@ -358,6 +382,11 @@ export default function PuzzleTrainer() {
               );
             })}
           </div>
+          {queue.length > listCap && (
+            <div className="btn-row">
+              <button className="btn" onClick={() => setListCap((c) => c + 120)}>Show more ({queue.length - listCap} left)</button>
+            </div>
+          )}
           <div className="btn-row">
             <button className="btn" onClick={() => gotoPos(pos - 1)}>← Prev</button>
             <button className="btn" onClick={() => gotoPos(pos + 1)}>Next →</button>

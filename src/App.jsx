@@ -1,10 +1,22 @@
-import { useEffect, useMemo, useState } from 'react';
-import PlayVsEngine from './components/PlayVsEngine.jsx';
-import PuzzleTrainer from './components/PuzzleTrainer.jsx';
-import OpeningsTeacher from './components/OpeningsTeacher.jsx';
-import StrategyCoach from './components/StrategyCoach.jsx';
-import FamousGames from './components/FamousGames.jsx';
-import Guide from './components/Guide.jsx';
+import { useEffect, useMemo, useState, Suspense, lazy } from 'react';
+
+// Route-split: each tab loads on demand so first paint stays tiny for
+// slow connections and small devices. chess.js / board / datasets ride along.
+const PlayVsEngine = lazy(() => import('./components/PlayVsEngine.jsx'));
+const PuzzleTrainer = lazy(() => import('./components/PuzzleTrainer.jsx'));
+const OpeningsTeacher = lazy(() => import('./components/OpeningsTeacher.jsx'));
+const StrategyCoach = lazy(() => import('./components/StrategyCoach.jsx'));
+const FamousGames = lazy(() => import('./components/FamousGames.jsx'));
+const GuideLazy = lazy(() => import('./components/Guide.jsx'));
+
+function TabFallback() {
+  return (
+    <div className="card" aria-busy="true">
+      <h3>Loading…</h3>
+      <p className="muted small">Fetching this section (one small download, then cached).</p>
+    </div>
+  );
+}
 import { CmStartHere } from './components/CmStartHere.jsx';
 import { CmNextStep } from './components/CmNextStep.jsx';
 import { CmDisplaySettings } from './components/CmDisplaySettings.jsx';
@@ -20,7 +32,7 @@ import './App.css';
 const TABS = [
   { id: 'start', label: '🏠 Start Here', desc: 'Your 9-step learning path' },
   { id: 'play', label: '♞ Play Engine', desc: 'Practice games vs the computer' },
-  { id: 'puzzles', label: '🧩 Puzzles', desc: '510 mates & tactics' },
+  { id: 'puzzles', label: '🧩 Puzzles', desc: '3010 mates & tactics' },
   { id: 'learn', label: '🎓 Openings Coach', desc: '100 repertoires with arrows' },
   { id: 'middlegame', label: '⚔️ Middlegame', desc: '100 plans, traps & tactics' },
   { id: 'endgame', label: '♔ Endgame', desc: '100 techniques with drills' },
@@ -159,6 +171,7 @@ export default function App() {
         <p className="muted small drawer-foot">Engine runs offline in your browser.</p>
       </nav>
       <main className="main">
+        <Suspense fallback={<TabFallback />}>
         {tab === 'start' && (
           <div className="side-col" style={{ maxWidth: 860, marginInline: 'auto' }}>
             <UxSectionHeader
@@ -195,7 +208,8 @@ export default function App() {
         {tab === 'middlegame' && <StrategyCoach key="middlegame" phase="middlegame" />}
         {tab === 'endgame' && <StrategyCoach key="endgame" phase="endgame" />}
         {tab === 'games' && <FamousGames />}
-        {tab === 'guide' && <Guide />}
+        {tab === 'guide' && <GuideLazy />}
+        </Suspense>
       </main>
       <footer className="footer">
         <span>Engine: Stockfish 10 (WASM, runs fully offline in your browser) with a built-in fallback • Positions & lines verified with chess.js</span>

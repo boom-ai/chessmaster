@@ -2,6 +2,11 @@
 import { Chess } from 'chess.js';
 import { PUZZLES } from '../src/data/puzzles.js';
 import { LICHESS_PUZZLES } from '../src/data/puzzlesLichess.js';
+import { LICHESS_M1 } from '../src/data/puzzlesM1.js';
+import { LICHESS_M2 } from '../src/data/puzzlesM2.js';
+import { LICHESS_M3 } from '../src/data/puzzlesM3.js';
+import { LICHESS_M4 } from '../src/data/puzzlesM4.js';
+import { LICHESS_M5 } from '../src/data/puzzlesM5.js';
 
 function uciToMove(uci) {
   return { from: uci.slice(0, 2), to: uci.slice(2, 4), promotion: uci.length > 4 ? uci[4] : undefined };
@@ -10,7 +15,7 @@ function uciToMove(uci) {
 const VERBOSE = process.argv.includes('--verbose');
 let failures = 0;
 let checked = 0;
-for (const p of [...PUZZLES, ...LICHESS_PUZZLES]) {
+for (const p of [...PUZZLES, ...LICHESS_PUZZLES, ...LICHESS_M1, ...LICHESS_M2, ...LICHESS_M3, ...LICHESS_M4, ...LICHESS_M5]) {
   const game = new Chess(p.fen);
   const expectedSide = p.side;
   if (game.turn() !== expectedSide) {
