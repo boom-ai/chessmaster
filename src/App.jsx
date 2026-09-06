@@ -8,8 +8,11 @@ import Guide from './components/Guide.jsx';
 import { CmStartHere } from './components/CmStartHere.jsx';
 import { CmNextStep } from './components/CmNextStep.jsx';
 import { CmDisplaySettings } from './components/CmDisplaySettings.jsx';
+import UxThemeToggle from './ux-theme/UxThemeToggle.jsx';
+import { UxSectionHeader } from './ux-section/UxSection.jsx';
 import { CM_PATH } from './data/cmPathData.js';
 import { useCmDisplayMode } from './hooks/cmDisplayMode.js';
+import { getInitialTheme, resolveTheme, THEME_KEY } from './ux-theme/uxThemeInit.js';
 import { getCompletedIds } from './utils/cmProgressStore.js';
 import { speakText } from './utils/cmSpeech.js';
 import './App.css';
@@ -67,6 +70,26 @@ export default function App() {
   const [menuOpen, setMenuOpen] = useState(false);
   const dm = useCmDisplayMode();
 
+  // Manual theme (light/dark/system) wins over OS; applied to <html>.
+  useEffect(() => {
+    const apply = () => {
+      try {
+        const stored = window.localStorage.getItem(THEME_KEY);
+        const mode = stored === 'light' || stored === 'dark' || stored === 'system' ? stored : getInitialTheme();
+        document.documentElement.dataset.theme = resolveTheme(mode);
+      } catch {
+        /* ignore */
+      }
+    };
+    apply();
+    window.addEventListener('cm-theme-change', apply);
+    window.addEventListener('storage', apply);
+    return () => {
+      window.removeEventListener('cm-theme-change', apply);
+      window.removeEventListener('storage', apply);
+    };
+  }, []);
+
   const go = (id) => {
     setTab(id);
     setMenuOpen(false);
@@ -115,6 +138,7 @@ export default function App() {
             </button>
           ))}
         </nav>
+        <UxThemeToggle className="topbar-theme" />
       </header>
       <div
         className={`drawer-backdrop ${menuOpen ? 'open' : ''}`}
@@ -137,10 +161,12 @@ export default function App() {
       <main className="main">
         {tab === 'start' && (
           <div className="side-col" style={{ maxWidth: 860, marginInline: 'auto' }}>
-            <div className="card">
-              <h2>Welcome! Start here 👇</h2>
-              <p className="coach-text">Nine small steps take you from your first piece to your first win. Do them in order — each one unlocks the next.</p>
-            </div>
+            <UxSectionHeader
+              eyebrow="Start here"
+              title="Welcome! Start here"
+              sub="Nine small steps take you from your first piece to your first win. Do them in order."
+              meta={`${completedIds.length} of ${CM_PATH.length} done`}
+            />
             <CmStartHere
               steps={CM_PATH}
               completedIds={completedIds}

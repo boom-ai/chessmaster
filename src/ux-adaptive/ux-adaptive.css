@@ -1,0 +1,218 @@
+/* ux-adaptive: isolated adaptive flow / lesson / board / rail / path set */
+:root {
+  --board-max: 640px;
+}
+
+.tb-flow {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  width: 100%;
+  max-width: 1120px;
+  margin-inline: auto;
+  min-width: 0;
+}
+
+.tb-lesson {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  min-width: 0;
+}
+
+.tb-main {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 0;
+  min-height: 0;
+}
+
+.tb-aside {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 0;
+  min-height: 0;
+}
+
+.tb-board {
+  width: min(100%, var(--board-max, 640px));
+  aspect-ratio: 1 / 1;
+  margin-inline: auto;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.tb-rail {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+}
+
+.tb-rail-track {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  min-width: 0;
+}
+
+.tb-rail-track > * {
+  flex: 0 0 auto;
+  min-width: 44px;
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.tb-rail > * {
+  min-height: 44px;
+}
+
+.tb-grid-path {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+}
+
+.tb-grid-path > * {
+  min-width: 44px;
+  min-height: 44px;
+}
+
+.tb-main > *,
+.tb-aside > * {
+  min-width: 0;
+}
+
+/* phone: stacked, board first */
+@media (max-width: 599px) {
+  .tb-lesson {
+    flex-direction: column;
+  }
+  .tb-board {
+    order: -1;
+  }
+  .tb-main {
+    order: 1;
+  }
+  .tb-aside {
+    order: 2;
+  }
+  .tb-rail-track {
+    overflow-x: auto;
+    flex-wrap: nowrap;
+    scroll-snap-type: x proximity;
+    padding-bottom: 4px;
+  }
+}
+
+/* small-up: room for rail spacing */
+@media (min-width: 600px) {
+  .tb-flow {
+    gap: 20px;
+  }
+  .tb-lesson {
+    gap: 20px;
+  }
+  .tb-rail-track {
+    overflow-x: auto;
+    flex-wrap: nowrap;
+  }
+}
+
+/* 768: mid-size phones / small portrait panels */
+@media (min-width: 768px) {
+  .tb-lesson {
+    gap: 22px;
+  }
+  .tb-board {
+    width: min(100%, var(--board-max, 640px));
+  }
+  .tb-rail-track {
+    gap: 10px;
+  }
+}
+
+/* 834: large portrait panels */
+@media (min-width: 834px) {
+  .tb-flow {
+    gap: 22px;
+  }
+  .tb-aside {
+    gap: 14px;
+  }
+}
+
+/* 2-col lesson: board ~55% sticky top + scrolling aside */
+@media (min-width: 900px) {
+  .tb-lesson {
+    display: grid;
+    grid-template-columns: 55% minmax(0, 1fr);
+    align-items: start;
+  }
+  .tb-main {
+    position: sticky;
+    top: 12px;
+    min-height: 0;
+  }
+  .tb-board {
+    order: 0;
+  }
+  .tb-aside {
+    min-height: 0;
+    max-height: calc(100vh - 24px);
+    overflow-y: auto;
+  }
+  .tb-rail-track {
+    overflow-x: visible;
+    flex-wrap: wrap;
+  }
+}
+
+/* rail as horizontal scroll chip rail up to 900px */
+@media (max-width: 900px) {
+  .tb-rail-track {
+    overflow-x: auto;
+    flex-wrap: nowrap;
+    scroll-snap-type: x proximity;
+    -webkit-overflow-scrolling: touch;
+    padding-bottom: 6px;
+  }
+}
+
+/* 1024: wide content cap */
+@media (min-width: 1024px) {
+  .tb-flow {
+    max-width: 1120px;
+  }
+  .tb-lesson {
+    grid-template-columns: 55% minmax(0, 1fr);
+  }
+}
+
+/* landscape + short height: compact guards */
+@media (orientation: landscape) and (max-height: 500px) {
+  .tb-flow {
+    gap: 8px;
+  }
+  .tb-lesson {
+    gap: 8px;
+  }
+  .tb-rail {
+    gap: 6px;
+  }
+  .tb-grid-path {
+    gap: 6px;
+  }
+  .tb-aside {
+    max-height: calc(100vh - 12px);
+    overflow-y: auto;
+  }
+  .tb-main {
+    top: 8px;
+  }
+}

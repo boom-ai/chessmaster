@@ -3,6 +3,7 @@ import { Chess } from 'chess.js';
 import Board from './Board.jsx';
 import { OPENINGS, getOpening } from '../data/openings.js';
 import { CmLearnAffordance } from './CmLearnAffordance.jsx';
+import { UxSectionHeader } from '../ux-section/UxSection.jsx';
 import { CmProgressBar } from './CmStars.jsx';
 import { awardStar } from '../utils/cmProgressStore.js';
 import { readAutoplayMs } from '../hooks/cmDisplayMode.js';
@@ -196,6 +197,9 @@ export default function OpeningsTeacher() {
 
   return (
     <div className="learn-layout">
+      <div style={{ gridColumn: '1 / -1' }}>
+        <UxSectionHeader eyebrow="Learn" title="Openings Coach" sub="Step through with the arrows, then test yourself in Practice mode." meta={`${practicedCount}/${OPENINGS.length} practiced`} />
+      </div>
       <aside className="open-list">
         <h3>Repertoire <span className="muted small">{practicedCount}/{OPENINGS.length} practiced</span></h3>
         <CmProgressBar done={practicedCount} total={OPENINGS.length} />

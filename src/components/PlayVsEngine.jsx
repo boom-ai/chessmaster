@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Chess } from 'chess.js';
 import Board from './Board.jsx';
+import { UxSectionHeader } from '../ux-section/UxSection.jsx';
 import { awardStar } from '../utils/cmProgressStore.js';
 import { getEngine } from '../engine/stockfish.js';
 import { randomMove } from '../engine/fallbackEngine.js';
@@ -409,6 +410,9 @@ export default function PlayVsEngine() {
 
   return (
     <div ref={wrapRef} className={`play-layout ${isFullscreen ? 'is-fullscreen' : ''} ${reviewing ? 'is-reviewing' : ''}`}>
+      <div style={{ gridColumn: '1 / -1' }}>
+        <UxSectionHeader eyebrow="Practice" title="Play the engine" sub="Try your ideas in a real game — undo and hints are always here." meta={`${history.length} moves`} />
+      </div>
       <div className="board-col">
         <div className="status-line">
           <span className={`dot ${thinking ? 'thinking' : 'idle'}`} />

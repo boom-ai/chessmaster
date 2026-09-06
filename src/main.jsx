@@ -5,6 +5,9 @@ import './css/cm-path.css'
 import './css/cm-display.css'
 import './css/cm-controls.css'
 import './css/cm-motivation.css'
+import './ux-theme/ux-theme.css'
+import './ux-section/ux-section.css'
+import './ux-adaptive/ux-adaptive.css'
 import App from './App.jsx'
 
 createRoot(document.getElementById('root')).render(

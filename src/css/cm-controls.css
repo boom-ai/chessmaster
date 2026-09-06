@@ -25,23 +25,26 @@
 }
 
 .cm-afford-overlay {
-  position: absolute;
-  inset: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 16px;
-  background: rgba(0, 0, 0, 0.35);
+  position: static;
+  display: block;
+  padding: 0 0 10px;
+  background: none;
 }
 
 .cm-afford-card {
-  max-width: 320px;
+  max-width: none;
   width: 100%;
-  padding: 16px;
+  padding: 10px 14px;
   border: 1px solid var(--border);
+  border-left: 4px solid var(--accent, #22c55e);
   border-radius: 12px;
   background: var(--card);
   color: var(--text-h);
   box-shadow: var(--shadow);
-  text-align: center;
+  text-align: left;
+}
+
+.cm-afford-card p {
+  margin: 0 0 8px;
+  font-size: 14px;
 }

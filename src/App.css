@@ -91,3 +91,28 @@
   .learn-layout > .side-col { order: -1; }
   .learn-layout > .open-list { order: 0; }
 }
+
+/* ---------- theme toggle: pinned top-right ---------- */
+.topbar .topbar-theme { margin-left: auto; flex: 0 0 auto; }
+
+/* ---------- tablet 761–1100px: no tab crush, roomier board ---------- */
+@media (max-width: 1100px) and (min-width: 761px) {
+  .tabs { flex-wrap: nowrap; overflow-x: auto; }
+  .tab { flex: 0 0 auto; }
+  .board-wrap { max-width: 640px; }
+  .learn-layout {
+    grid-template-columns: minmax(300px, 5fr) minmax(280px, 4fr);
+  }
+  .learn-layout > .board-col { grid-column: 1; }
+  .learn-layout > .side-col { grid-column: 2; }
+  .learn-layout > .open-list {
+    grid-column: 1 / -1;
+    display: flex; flex-direction: row; overflow-x: auto; gap: 8px;
+    padding-bottom: 6px; max-width: none;
+  }
+  .learn-layout > .open-list > h3,
+  .learn-layout > .open-list .search-box { flex: 0 0 auto; align-self: center; }
+  .learn-layout > .open-list .open-group { display: contents; }
+  .learn-layout > .open-list .open-group-head { display: none; }
+  .learn-layout > .open-list .open-item { flex: 0 0 auto; }
+}

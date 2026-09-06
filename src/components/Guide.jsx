@@ -1,6 +1,7 @@
 import { useRef, useState } from 'react';
 import { Chess } from 'chess.js';
 import Board from './Board.jsx';
+import { UxSectionHeader } from '../ux-section/UxSection.jsx';
 import { PIECE_PUZZLES } from '../data/puzzlesByPiece.js';
 
 const PIECES = [
@@ -279,6 +280,9 @@ export default function Guide() {
 
   return (
     <div className="play-layout">
+      <div style={{ gridColumn: '1 / -1' }}>
+        <UxSectionHeader eyebrow="Reference" title="Guide" sub="Pieces, rules and notation — look anything up." />
+      </div>
       <div className="board-col">
         <div className="btn-row wrap" style={{ marginTop: 0 }}>
           <button className={`btn ${section === 'notation' ? 'primary' : ''}`} onClick={() => setSection('notation')}>📝 Notation guide</button>

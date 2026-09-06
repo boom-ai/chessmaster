@@ -3,6 +3,7 @@ import { Chess } from 'chess.js';
 import Board from './Board.jsx';
 import { STRATEGY } from '../data/strategy.js';
 import { CmLearnAffordance } from './CmLearnAffordance.jsx';
+import { UxSectionHeader } from '../ux-section/UxSection.jsx';
 import { CmProgressBar } from './CmStars.jsx';
 import { awardStar } from '../utils/cmProgressStore.js';
 import { readAutoplayMs } from '../hooks/cmDisplayMode.js';
@@ -218,6 +219,9 @@ export default function StrategyCoach({ phase }) {
 
   return (
     <div className="learn-layout">
+      <div style={{ gridColumn: '1 / -1' }}>
+        <UxSectionHeader eyebrow={phase === 'middlegame' ? 'Attack' : 'Technique'} title={phase === 'middlegame' ? 'Middlegame Coach' : 'Endgame Coach'} sub="Watch the idea, then prove it in Drill mode." meta={`${doneCount}/${lessons.length} practiced`} />
+      </div>
       <aside className="open-list">
         <h3>{phase === 'middlegame' ? 'Middlegame' : phase === 'endgame' ? 'Endgame' : 'Strategy'} <span className="muted small">{doneCount}/{lessons.length} practiced</span></h3>
         <CmProgressBar done={doneCount} total={lessons.length} />

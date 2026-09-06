@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Chess } from 'chess.js';
 import Board from './Board.jsx';
+import { UxSectionHeader } from '../ux-section/UxSection.jsx';
 import { FAMOUS_GAMES, getGame, gameEra } from '../data/games/index.js';
 import { awardStar } from '../utils/cmProgressStore.js';
 import { readAutoplayMs } from '../hooks/cmDisplayMode.js';
@@ -121,6 +122,9 @@ export default function FamousGames() {
 
   return (
     <div className="learn-layout">
+      <div style={{ gridColumn: '1 / -1' }}>
+        <UxSectionHeader eyebrow="Study" title="Famous Games" sub="Every move explained — watch how the greats did it." meta={`${studiedCount}/${FAMOUS_GAMES.length} studied`} />
+      </div>
       <aside className="open-list games-list-col">
         <h3>Library <span className="muted small">{studiedCount}/100 studied</span></h3>
         <input

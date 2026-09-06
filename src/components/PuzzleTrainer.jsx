@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Chess } from 'chess.js';
 import Board from './Board.jsx';
+import { UxSectionHeader } from '../ux-section/UxSection.jsx';
 import { PUZZLES, puzzleRatingColor } from '../data/puzzles.js';
 import { LICHESS_PUZZLES } from '../data/puzzlesLichess.js';
 import { toPlain } from '../data/cmPlainWords.js';
@@ -235,6 +236,9 @@ export default function PuzzleTrainer() {
 
   return (
     <div className="play-layout">
+      <div style={{ gridColumn: '1 / -1' }}>
+        <UxSectionHeader eyebrow="Solve" title="Puzzles" sub="Find the winning move — tap Hint anytime, retry as often as you like." meta={`${solvedCount}/${ALL.length} solved`} />
+      </div>
       <div className="board-col">
         <Board
           fen={fen}
