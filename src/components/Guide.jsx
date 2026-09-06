@@ -1,6 +1,8 @@
 import { useRef, useState } from 'react';
 import { Chess } from 'chess.js';
 import Board from './Board.jsx';
+import { TbCoachAcc, TbCoachAccItem } from './TbCoachAcc.jsx';
+import { TbActionBar } from './TbActionBar.jsx';
 import { UxSectionHeader } from '../ux-section/UxSection.jsx';
 import { PIECE_PUZZLES } from '../data/puzzlesByPiece.js';
 
@@ -226,6 +228,9 @@ export default function Guide() {
     pickPiece(PIECES[(i + 1) % PIECES.length].id);
   };
 
+  const showPieces = () => setSection('pieces');
+  const showNotation = () => setSection('notation');
+
   const forceWhite = (fen) => fen.replace(/ ([wb]) /, ' w ');
 
   const tryDemoMove = (from, to) => {
@@ -279,11 +284,11 @@ export default function Guide() {
   };
 
   return (
-    <div className="play-layout">
+    <div className="play-layout tb-flow tb-lesson">
       <div style={{ gridColumn: '1 / -1' }}>
         <UxSectionHeader eyebrow="Reference" title="Guide" sub="Pieces, rules and notation — look anything up." />
       </div>
-      <div className="board-col">
+      <div className="board-col tb-main tb-board tb-stick">
         <div className="btn-row wrap" style={{ marginTop: 0 }}>
           <button className={`btn ${section === 'notation' ? 'primary' : ''}`} onClick={() => setSection('notation')}>📝 Notation guide</button>
           <button className={`btn ${section === 'pieces' ? 'primary' : ''}`} onClick={() => setSection('pieces')}>♟ Piece school</button>
@@ -375,8 +380,10 @@ export default function Guide() {
         )}
       </div>
 
-      <div className="side-col">
+      <div className="side-col tb-aside tb-coachacc">
+        <TbCoachAcc defaultOpen={0} single={true}>
         {section === 'pieces' && challenge && challengeWon && (
+          <TbCoachAccItem title="Mastered">
           <div className="card coach">
             <h3>🏆 {demo.name} mastered!</h3>
             <p>You captured every target in {demoMoves} moves. Try to beat that score — or take the next piece.</p>
@@ -384,9 +391,11 @@ export default function Guide() {
               <button className="btn primary" onClick={nextPiece}>Next piece →</button>
             </div>
           </div>
+          </TbCoachAccItem>
         )}
         {section === 'pieces' ? (
           <>
+            <TbCoachAccItem title="Piece guide">
             <div className="card coach">
               <h2>{demo.glyph} {demo.name} <span className="muted small">· {demo.value}</span></h2>
               <p className="coach-text">{demo.how}</p>
@@ -395,6 +404,8 @@ export default function Guide() {
                 {demo.scenarios.map((s, i) => <li key={i}>{s}</li>)}
               </ul>
             </div>
+            </TbCoachAccItem>
+            <TbCoachAccItem title="Puzzles">
             <div className="card">
               <h3>🧩 {demo.name} puzzles — play them!</h3>
               <p className="muted small">Real Lichess puzzles starring this piece. Black replies play automatically.</p>
@@ -413,8 +424,10 @@ export default function Guide() {
                 </div>
               )}
             </div>
+            </TbCoachAccItem>
           </>
         ) : (
+          <TbCoachAccItem title="How to use">
           <div className="card coach">
             <h3>💡 How to use this guide</h3>
             <p className="coach-text">
@@ -425,8 +438,11 @@ export default function Guide() {
               <button className="btn primary" onClick={() => setSection('pieces')}>Next: piece school →</button>
             </div>
           </div>
+          </TbCoachAccItem>
         )}
+        </TbCoachAcc>
       </div>
+      <TbActionBar actions={[{ id: 'pieces', label: 'Piece school', onClick: showPieces, primary: section === 'pieces' }, { id: 'notation', label: 'Notation guide', onClick: showNotation, primary: section === 'notation' }]} />
     </div>
   );
 }

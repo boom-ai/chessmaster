@@ -7,6 +7,8 @@ import { UxSectionHeader } from '../ux-section/UxSection.jsx';
 import { CmProgressBar } from './CmStars.jsx';
 import { awardStar } from '../utils/cmProgressStore.js';
 import { readAutoplayMs } from '../hooks/cmDisplayMode.js';
+import { TbCoachAcc, TbCoachAccItem } from './TbCoachAcc.jsx';
+import { TbActionBar } from './TbActionBar.jsx';
 
 function replay(ucis, n) {
   const g = new Chess();
@@ -196,11 +198,11 @@ export default function OpeningsTeacher() {
   const practicedCount = OPENINGS.filter((o) => progress[o.id]?.practiced).length;
 
   return (
-    <div className="learn-layout">
+    <div className="learn-layout tb-flow tb-lesson">
       <div style={{ gridColumn: '1 / -1' }}>
         <UxSectionHeader eyebrow="Learn" title="Openings Coach" sub="Step through with the arrows, then test yourself in Practice mode." meta={`${practicedCount}/${OPENINGS.length} practiced`} />
       </div>
-      <aside className="open-list">
+      <aside className="open-list tb-rail">
         <h3>Repertoire <span className="muted small">{practicedCount}/{OPENINGS.length} practiced</span></h3>
         <CmProgressBar done={practicedCount} total={OPENINGS.length} />
         <input
@@ -240,7 +242,7 @@ export default function OpeningsTeacher() {
         })}
       </aside>
 
-      <div className="board-col">
+      <div className="board-col tb-main tb-board tb-stick">
         <CmLearnAffordance mode="learn" stepIndex={practice ? 1 : step} onStartPractice={startPractice} />
         <Board
           fen={boardFen}
@@ -294,7 +296,9 @@ export default function OpeningsTeacher() {
         )}
       </div>
 
-      <div className="side-col">
+      <div className="side-col tb-aside tb-coachacc">
+        <TbCoachAcc defaultOpen={0} single={true}>
+          <TbCoachAccItem title="Overview">
         <div className="card">
           <h2>{opening.name}</h2>
           <p className="muted">{opening.eco} • {opening.tagline}</p>
@@ -305,6 +309,8 @@ export default function OpeningsTeacher() {
           </ul>
         </div>
 
+          </TbCoachAccItem>
+          <TbCoachAccItem title="Lines">
         <div className="card">
           <h3>Lines</h3>
           <div className="btn-row wrap">
@@ -316,6 +322,8 @@ export default function OpeningsTeacher() {
           {!isMain && <p className="coach-text var-desc">{opening.variations[varIndex].description}</p>}
         </div>
 
+          </TbCoachAccItem>
+          <TbCoachAccItem title="Coach">
         <div className="card coach">
           {!practice ? (
             step === 0 ? (
@@ -346,7 +354,10 @@ export default function OpeningsTeacher() {
             </>
           )}
         </div>
+          </TbCoachAccItem>
+        </TbCoachAcc>
       </div>
+      <TbActionBar actions={[{ id: 'practice', label: 'Practice this line', onClick: startPractice, primary: true }, { id: 'watch', label: 'Watch', onClick: () => setAuto((a) => !a) }]} />
     </div>
   );
 }

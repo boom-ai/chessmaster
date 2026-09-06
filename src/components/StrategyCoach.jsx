@@ -7,6 +7,8 @@ import { UxSectionHeader } from '../ux-section/UxSection.jsx';
 import { CmProgressBar } from './CmStars.jsx';
 import { awardStar } from '../utils/cmProgressStore.js';
 import { readAutoplayMs } from '../hooks/cmDisplayMode.js';
+import { TbCoachAcc, TbCoachAccItem } from './TbCoachAcc.jsx';
+import { TbActionBar } from './TbActionBar.jsx';
 
 function playUci(game, uci) {
   return game.move({ from: uci.slice(0, 2), to: uci.slice(2, 4), promotion: uci[4] });
@@ -218,11 +220,11 @@ export default function StrategyCoach({ phase }) {
   }, [lesson]);
 
   return (
-    <div className="learn-layout">
+    <div className="learn-layout tb-flow tb-lesson">
       <div style={{ gridColumn: '1 / -1' }}>
         <UxSectionHeader eyebrow={phase === 'middlegame' ? 'Attack' : 'Technique'} title={phase === 'middlegame' ? 'Middlegame Coach' : 'Endgame Coach'} sub="Watch the idea, then prove it in Drill mode." meta={`${doneCount}/${lessons.length} practiced`} />
       </div>
-      <aside className="open-list">
+      <aside className="open-list tb-rail">
         <h3>{phase === 'middlegame' ? 'Middlegame' : phase === 'endgame' ? 'Endgame' : 'Strategy'} <span className="muted small">{doneCount}/{lessons.length} practiced</span></h3>
         <CmProgressBar done={doneCount} total={lessons.length} />
         <input
@@ -258,7 +260,7 @@ export default function StrategyCoach({ phase }) {
         })}
       </aside>
 
-      <div className="board-col">
+      <div className="board-col tb-main tb-board tb-stick">
         <CmLearnAffordance mode="learn" stepIndex={practice ? 1 : step} onStartPractice={startPractice} />
         <Board
           fen={boardFen}
@@ -312,7 +314,9 @@ export default function StrategyCoach({ phase }) {
         )}
       </div>
 
-      <div className="side-col">
+      <div className="side-col tb-aside tb-coachacc">
+        <TbCoachAcc defaultOpen={0} single={true}>
+          <TbCoachAccItem title="Lesson">
         <div className="card">
           <h2>{lesson.title}</h2>
           <p className="muted">{lesson.level} • {lesson.phase} • {lesson.tagline}</p>
@@ -323,6 +327,8 @@ export default function StrategyCoach({ phase }) {
           </ul>
         </div>
 
+          </TbCoachAccItem>
+          <TbCoachAccItem title="Coach">
         <div className="card coach">
           {!practice ? (
             step === 0 ? (
@@ -358,7 +364,9 @@ export default function StrategyCoach({ phase }) {
           )}
         </div>
 
-        {lesson.phase === 'endgame' && drillEndFen && (
+          </TbCoachAccItem>
+          {lesson.phase === 'endgame' && drillEndFen && (
+          <TbCoachAccItem title="Tablebase check">
           <div className="card">
             <h3>♜ Tablebase check</h3>
             <p className="muted small">Drill-end FEN (verified legal; check WDL):</p>
@@ -367,8 +375,11 @@ export default function StrategyCoach({ phase }) {
               <a className="btn" href={`https://tablebase.lichess.ovh/standard?fen=${encodeURIComponent(drillEndFen)}`} target="_blank" rel="noreferrer">Open tablebase ↗</a>
             </div>
           </div>
+          </TbCoachAccItem>
         )}
+        </TbCoachAcc>
       </div>
+      <TbActionBar actions={[{ id: 'practice', label: 'Practice drill', onClick: startPractice, primary: true }, { id: 'watch', label: 'Watch', onClick: () => setAuto((a) => !a) }]} />
     </div>
   );
 }

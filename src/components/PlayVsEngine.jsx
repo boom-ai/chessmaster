@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Chess } from 'chess.js';
 import Board from './Board.jsx';
+import { TbCoachAcc, TbCoachAccItem } from './TbCoachAcc.jsx';
+import { TbActionBar } from './TbActionBar.jsx';
 import { UxSectionHeader } from '../ux-section/UxSection.jsx';
 import { awardStar } from '../utils/cmProgressStore.js';
 import { getEngine } from '../engine/stockfish.js';
@@ -409,11 +411,11 @@ export default function PlayVsEngine() {
   );
 
   return (
-    <div ref={wrapRef} className={`play-layout ${isFullscreen ? 'is-fullscreen' : ''} ${reviewing ? 'is-reviewing' : ''}`}>
+    <div ref={wrapRef} className={`play-layout tb-flow tb-lesson ${isFullscreen ? 'is-fullscreen' : ''} ${reviewing ? 'is-reviewing' : ''}`}>
       <div style={{ gridColumn: '1 / -1' }}>
         <UxSectionHeader eyebrow="Practice" title="Play the engine" sub="Try your ideas in a real game — undo and hints are always here." meta={`${history.length} moves`} />
       </div>
-      <div className="board-col">
+      <div className="board-col tb-main tb-board tb-stick">
         <div className="status-line">
           <span className={`dot ${thinking ? 'thinking' : 'idle'}`} />
           <strong>{statusText()}</strong>
@@ -509,7 +511,9 @@ export default function PlayVsEngine() {
         )}
       </div>
 
-      <div className="side-col">
+      <div className="side-col tb-aside tb-coachacc">
+        <TbCoachAcc>
+          <TbCoachAccItem title="New game">
         <div className="card">
           <h3>New game</h3>
           <div className="btn-row">
@@ -552,7 +556,8 @@ export default function PlayVsEngine() {
             ))}
           </div>
         </div>
-
+          </TbCoachAccItem>
+          <TbCoachAccItem title="Moves">
         <div className="card">
           <h3>Moves {hintsUsed > 0 && <span className="muted">• {hintsUsed} hint{hintsUsed > 1 ? 's' : ''}</span>}</h3>
           <div className={`moves ${reviewing ? 'review-clickable' : ''}`}>
@@ -587,7 +592,10 @@ export default function PlayVsEngine() {
           </div>
           <p className="muted small">Promotions auto-queen. Drag or tap a piece, then tap its destination.</p>
         </div>
+          </TbCoachAccItem>
+        </TbCoachAcc>
       </div>
+      <TbActionBar actions={[{ id: 'hint', label: 'Hint', onClick: hint }, { id: 'new', label: 'New Game', onClick: () => newGame(playerColorRef.current), primary: true }, { id: 'flip', label: 'Flip', onClick: flipBoard }]} />
     </div>
   );
 }

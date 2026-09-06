@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Chess } from 'chess.js';
 import Board from './Board.jsx';
+import { TbCoachAcc, TbCoachAccItem } from './TbCoachAcc.jsx';
+import { TbActionBar } from './TbActionBar.jsx';
 import { UxSectionHeader } from '../ux-section/UxSection.jsx';
 import { PUZZLES, puzzleRatingColor } from '../data/puzzles.js';
 import { LICHESS_PUZZLES } from '../data/puzzlesLichess.js';
@@ -235,11 +237,11 @@ export default function PuzzleTrainer() {
   const progress = Math.min(100, (ply / puzzle.solution.length) * 100);
 
   return (
-    <div className="play-layout">
+    <div className="play-layout tb-flow tb-lesson">
       <div style={{ gridColumn: '1 / -1' }}>
         <UxSectionHeader eyebrow="Solve" title="Puzzles" sub="Find the winning move — tap Hint anytime, retry as often as you like." meta={`${solvedCount}/${ALL.length} solved`} />
       </div>
-      <div className="board-col">
+      <div className="board-col tb-main tb-board tb-stick">
         <Board
           fen={fen}
           orientation={puzzle.side === 'w' ? 'white' : 'black'}
@@ -266,7 +268,9 @@ export default function PuzzleTrainer() {
         </div>
       </div>
 
-      <div className="side-col">
+      <div className="side-col tb-aside tb-coachacc">
+        <TbCoachAcc>
+          <TbCoachAccItem title="Puzzle">
         <div className="card puzzle-head">
           <div>
             <h3>{puzzle.title}</h3>
@@ -283,11 +287,15 @@ export default function PuzzleTrainer() {
             <span className="muted small">puzzle rating</span>
           </div>
         </div>
+          </TbCoachAccItem>
 
         {puzzle.solution.length > 1 && (
+          <TbCoachAccItem title="Note">
           <p className="muted small">A longer combination — your moves: {Math.ceil(puzzle.solution.length / 2)}, opponent replies play automatically.</p>
+          </TbCoachAccItem>
         )}
 
+          <TbCoachAccItem title="Moves">
         <div className="card">
           <h3>Moves</h3>
           <div className="moves">
@@ -304,8 +312,10 @@ export default function PuzzleTrainer() {
             <button className="btn" onClick={showSolution} disabled={solved}>👁 Solution</button>
           </div>
         </div>
+          </TbCoachAccItem>
 
         {solved && (
+          <TbCoachAccItem title="Why it works">
           <div className="card coach">
             <h3>✅ Why it works</h3>
             <p>{puzzle.explanation}</p>
@@ -313,15 +323,19 @@ export default function PuzzleTrainer() {
               <button className="btn primary" onClick={() => gotoPos(pos + 1)}>Next puzzle →</button>
             </div>
           </div>
+          </TbCoachAccItem>
         )}
 
         {!solved && (
+          <TbCoachAccItem title="Coach tip">
           <div className="card coach">
             <h3>💭 Coach tip</h3>
             <p>{puzzle.hint}</p>
           </div>
+          </TbCoachAccItem>
         )}
 
+          <TbCoachAccItem title="Puzzles">
         <div className="card">
           <h3>Puzzles <span className="muted small">{queue.length} in view</span></h3>
           <div className="btn-row wrap era-row">
@@ -349,7 +363,10 @@ export default function PuzzleTrainer() {
             <button className="btn" onClick={() => gotoPos(pos + 1)}>Next →</button>
           </div>
         </div>
+          </TbCoachAccItem>
+        </TbCoachAcc>
       </div>
+      <TbActionBar actions={[{ id: 'hint', label: 'Hint', onClick: showHint }, { id: 'next', label: 'Next', onClick: () => gotoPos(pos + 1), primary: true }, { id: 'retry', label: 'Retry', onClick: () => loadByIndex(index) }]} />
     </div>
   );
 }

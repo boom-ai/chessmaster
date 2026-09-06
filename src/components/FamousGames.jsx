@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Chess } from 'chess.js';
 import Board from './Board.jsx';
+import { TbCoachAcc, TbCoachAccItem } from './TbCoachAcc.jsx';
+import { TbActionBar } from './TbActionBar.jsx';
 import { UxSectionHeader } from '../ux-section/UxSection.jsx';
 import { FAMOUS_GAMES, getGame, gameEra } from '../data/games/index.js';
 import { awardStar } from '../utils/cmProgressStore.js';
@@ -120,12 +122,21 @@ export default function FamousGames() {
   const currentSan = step > 0 ? sans[step - 1] : null;
   const gameIndex = FAMOUS_GAMES.findIndex((g) => g.id === gameId);
 
+  const handleWatch = () => {
+    if (step >= game.moves.length) setStep(0);
+    setAuto((a) => !a);
+  };
+
+  const handleNextGame = () => {
+    if (gameIndex < FAMOUS_GAMES.length - 1) selectGame(FAMOUS_GAMES[gameIndex + 1].id);
+  };
+
   return (
-    <div className="learn-layout">
+    <div className="learn-layout tb-flow tb-lesson">
       <div style={{ gridColumn: '1 / -1' }}>
         <UxSectionHeader eyebrow="Study" title="Famous Games" sub="Every move explained — watch how the greats did it." meta={`${studiedCount}/${FAMOUS_GAMES.length} studied`} />
       </div>
-      <aside className="open-list games-list-col">
+      <aside className="open-list games-list-col tb-rail">
         <h3>Library <span className="muted small">{studiedCount}/100 studied</span></h3>
         <input
           className="search-box"
@@ -156,7 +167,7 @@ export default function FamousGames() {
         </div>
       </aside>
 
-      <div className="board-col">
+      <div className="board-col tb-main tb-board tb-stick">
         <Board
           fen={fen}
           orientation={flipped ? 'black' : 'white'}
@@ -183,7 +194,9 @@ export default function FamousGames() {
         </div>
       </div>
 
-      <div className="side-col">
+      <div className="side-col tb-aside tb-coachacc">
+        <TbCoachAcc defaultOpen={0} single={true}>
+          <TbCoachAccItem title="Game info">
         <div className="card">
           <h2>{game.white} – {game.black}</h2>
           <p className="muted">{game.event} · {game.site} · {game.year} · {game.eco} {game.opening}</p>
@@ -191,7 +204,9 @@ export default function FamousGames() {
           <p className="coach-text"><em>{game.tagline}</em></p>
           <p className="coach-text">{game.story}</p>
         </div>
+          </TbCoachAccItem>
 
+          <TbCoachAccItem title="Coaching notes">
         <div className="card coach">
           {step === 0 ? (
             <>
@@ -217,7 +232,9 @@ export default function FamousGames() {
             </div>
           )}
         </div>
+          </TbCoachAccItem>
 
+          <TbCoachAccItem title="Navigate">
         <div className="card">
           <h3>Navigate</h3>
           <div className="btn-row">
@@ -228,7 +245,10 @@ export default function FamousGames() {
             Game {gameIndex + 1} of 100 · {sans.filter((s) => s.includes('x')).length} captures · {sans.filter((s) => s.includes('+') || s.includes('#')).length} checks
           </p>
         </div>
+          </TbCoachAccItem>
+        </TbCoachAcc>
       </div>
+      <TbActionBar actions={[{ id: 'watch', label: auto ? 'Pause' : 'Watch', onClick: handleWatch, primary: true }, { id: 'next-game', label: 'Next game', onClick: handleNextGame }]} />
     </div>
   );
 }

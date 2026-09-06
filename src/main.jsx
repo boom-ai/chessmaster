@@ -8,6 +8,7 @@ import './css/cm-motivation.css'
 import './ux-theme/ux-theme.css'
 import './ux-section/ux-section.css'
 import './ux-adaptive/ux-adaptive.css'
+import './ux-adaptive/ux-phase2.css'
 import App from './App.jsx'
 
 createRoot(document.getElementById('root')).render(
