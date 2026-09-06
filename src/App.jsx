@@ -11,7 +11,8 @@ const TABS = [
   { id: 'play', label: '♞ Play Engine', desc: 'Challenge Stockfish at 5 levels • Bullet to Rapid clocks' },
   { id: 'puzzles', label: '🧩 Puzzles', desc: '510 mates & tactics' },
   { id: 'learn', label: '🎓 Openings Coach', desc: '12 repertoires with arrows' },
-  { id: 'strategy', label: '🧠 Strategy', desc: 'Middlegame plans & endgame technique' },
+  { id: 'middlegame', label: '⚔️ Middlegame', desc: '15 plans & structures with drills' },
+  { id: 'endgame', label: '♔ Endgame', desc: '15 must-know techniques with drills' },
   { id: 'games', label: '🏛 Famous Games', desc: '100 classics, every move explained' },
   { id: 'guide', label: '📚 Guide', desc: 'Notation, pieces & rules' },
 ];
@@ -86,7 +87,8 @@ export default function App() {
         {tab === 'play' && <PlayVsEngine />}
         {tab === 'puzzles' && <PuzzleTrainer />}
         {tab === 'learn' && <OpeningsTeacher />}
-        {tab === 'strategy' && <StrategyCoach />}
+        {tab === 'middlegame' && <StrategyCoach key="middlegame" phase="middlegame" />}
+        {tab === 'endgame' && <StrategyCoach key="endgame" phase="endgame" />}
         {tab === 'games' && <FamousGames />}
         {tab === 'guide' && <Guide />}
       </main>

@@ -40,29 +40,48 @@ function loadProgress() {
   }
 }
 
-export default function StrategyCoach() {
-  const [lessonId, setLessonId] = useState(STRATEGY[0].id);
+export default function StrategyCoach({ phase }) {
+  const lessons = useMemo(
+    () => (phase ? STRATEGY.filter((l) => l.phase === phase) : STRATEGY),
+    [phase],
+  );
+  const [lessonId, setLessonId] = useState(lessons[0].id);
   const [step, setStep] = useState(0);
   const [flipped, setFlipped] = useState(false);
   const [practice, setPractice] = useState(false);
   const [pPly, setPPly] = useState(0);
-  const [pFen, setPFen] = useState(STRATEGY[0].drill?.startFen ?? new Chess().fen());
+  const [pFen, setPFen] = useState(lessons[0].drill?.startFen ?? new Chess().fen());
   const [pMsg, setPMsg] = useState('');
   const [pDone, setPDone] = useState(false);
   const [progress, setProgress] = useState(loadProgress);
   const [auto, setAuto] = useState(false);
-  const pGame = useRef(new Chess(STRATEGY[0].drill?.startFen ?? new Chess().fen()));
+  const pGame = useRef(new Chess(lessons[0].drill?.startFen ?? new Chess().fen()));
   const autoTimer = useRef(null);
 
-  const lesson = STRATEGY.find((l) => l.id === lessonId) ?? STRATEGY[0];
+  const lesson = lessons.find((l) => l.id === lessonId) ?? lessons[0];
   const { fen, sans } = useMemo(() => replay(lesson, step), [lesson, step]);
 
   const selectLesson = (id) => {
     setLessonId(id);
     setStep(0);
     setAuto(false);
-    exitPractice();
+    setPractice(false);
+    setPDone(false);
+    setPPly(0);
   };
+
+  // Reset when switching sections (same component, different phase prop)
+  useEffect(() => {
+    setLessonId(lessons[0].id);
+    setStep(0);
+    setAuto(false);
+    setPractice(false);
+    setPDone(false);
+    setPPly(0);
+    setPFen(lessons[0].drill?.startFen ?? new Chess().fen());
+    pGame.current = new Chess(lessons[0].drill?.startFen ?? new Chess().fen());
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [phase]);
 
   useEffect(() => {
     if (autoTimer.current) clearInterval(autoTimer.current);
@@ -173,11 +192,13 @@ export default function StrategyCoach() {
   const orientation = flipped ? 'black' : 'white';
   const currentStep = !practice && step > 0 ? lesson.mainline[step - 1] : null;
 
-  const groups = [
-    { phase: 'middlegame', title: '⚔️ Middlegame', desc: 'Plans, structures & attacks' },
-    { phase: 'endgame', title: '♔ Endgame', desc: 'Must-know technique' },
-  ];
-  const doneCount = STRATEGY.filter((l) => progress[l.id]?.practiced).length;
+  const groups = phase
+    ? [{ phase, title: phase === 'middlegame' ? '⚔️ Middlegame' : '♔ Endgame', desc: phase === 'middlegame' ? 'Plans, structures & attacks' : 'Must-know technique' }]
+    : [
+      { phase: 'middlegame', title: '⚔️ Middlegame', desc: 'Plans, structures & attacks' },
+      { phase: 'endgame', title: '♔ Endgame', desc: 'Must-know technique' },
+    ];
+  const doneCount = lessons.filter((l) => progress[l.id]?.practiced).length;
   const drillEndFen = useMemo(() => {
     if (!lesson.drill) return null;
     try {
@@ -192,9 +213,9 @@ export default function StrategyCoach() {
   return (
     <div className="learn-layout">
       <aside className="open-list">
-        <h3>Strategy <span className="muted small">{doneCount}/{STRATEGY.length} practiced</span></h3>
+        <h3>{phase === 'middlegame' ? 'Middlegame' : phase === 'endgame' ? 'Endgame' : 'Strategy'} <span className="muted small">{doneCount}/{lessons.length} practiced</span></h3>
         {groups.map((group) => {
-          const items = STRATEGY.filter((l) => l.phase === group.phase);
+          const items = lessons.filter((l) => l.phase === group.phase);
           const done = items.filter((l) => progress[l.id]?.practiced).length;
           return (
             <div key={group.phase} className="open-group">

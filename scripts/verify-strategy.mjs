@@ -82,7 +82,7 @@ for (const L of STRATEGY) {
       }
     }
     if (!ok) { failures++; continue; }
-    if (L.id === 'e-mate-kq' && !dg.isCheckmate()) {
+    if (L.id.startsWith('e-mate-') && !dg.isCheckmate()) {
       console.log(`FAIL ${L.id} drill: does not end in mate`);
       failures++;
       continue;
