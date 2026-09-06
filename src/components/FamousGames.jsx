@@ -1,9 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Chess } from 'chess.js';
 import Board from './Board.jsx';
-import { TbCoachAcc, TbCoachAccItem } from './TbCoachAcc.jsx';
-import { TbActionBar } from './TbActionBar.jsx';
-import { UxSectionHeader } from '../ux-section/UxSection.jsx';
+import { Button, SectionHeader, Progress, CoachCallout, Chip, SearchField, Accordion } from '../v2/ui/Kit.jsx';
+import { LessonPage, UpNextDrawer, CelebrateSummary } from '../v2/lesson/LessonPage.jsx';
 import { FAMOUS_GAMES, getGame, gameEra } from '../data/games/index.js';
 import { awardStar } from '../utils/cmProgressStore.js';
 import { readAutoplayMs } from '../hooks/cmDisplayMode.js';
@@ -131,43 +130,50 @@ export default function FamousGames() {
     if (gameIndex < FAMOUS_GAMES.length - 1) selectGame(FAMOUS_GAMES[gameIndex + 1].id);
   };
 
-  return (
-    <div className="learn-layout tb-flow tb-lesson">
-      <div style={{ gridColumn: '1 / -1' }}>
-        <UxSectionHeader eyebrow="Study" title="Famous Games" sub="Every move explained — watch how the greats did it." meta={`${studiedCount}/${FAMOUS_GAMES.length} studied`} />
-      </div>
-      <aside className="open-list games-list-col tb-rail">
-        <h3>Library <span className="muted small">{studiedCount}/100 studied</span></h3>
-        <input
-          className="search-box"
-          type="text"
-          placeholder="Search player, event, opening…"
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-        />
-        <div className="btn-row wrap era-row">
-          {eras.map((e) => (
-            <button key={e} className={`btn small-btn ${eraFilter === e ? 'primary' : ''}`} onClick={() => setEraFilter(e)}>
-              {e === 'All' ? 'All' : e.replace(' Era', '').replace('Cold War Duels', 'Cold War').replace('Modern Masters', 'Modern').replace('Soviet School', 'Soviet')}
-            </button>
-          ))}
-        </div>
-        <div className="games-scroll">
-          {filtered.length === 0 && <p className="muted small">No games match.</p>}
-          {filtered.map((g) => (
-            <button key={g.id} className={`game-item ${g.id === gameId ? 'active' : ''}`} onClick={() => selectGame(g.id)}>
-              <span className="game-check">{studied[g.id] ? '✅' : `${FAMOUS_GAMES.indexOf(g) + 1}.`}</span>
-              <span className="game-main">
-                <span className="game-players">{g.white} – {g.black}</span>
-                <span className="muted small">{g.event} · {g.year} · {g.opening}</span>
-              </span>
-              <span className={`result-pill r-${g.result.replace(/[^01]/g, '') || 'draw'}`}>{resultBadge(g.result)}</span>
-            </button>
-          ))}
-        </div>
-      </aside>
+  const [drawerOpen, setDrawerOpen] = useState(false);
+  const drawerItems = filtered.map((g) => ({
+    id: g.id,
+    title: `${FAMOUS_GAMES.indexOf(g) + 1}. ${g.white} – ${g.black}`,
+    done: !!studied[g.id],
+  }));
 
-      <div className="board-col tb-main tb-board tb-stick">
+  return (
+    <LessonPage
+      progress={
+        <>
+          <SectionHeader title={`${game.white} – ${game.black}`} sub={`${game.event} · ${game.year} · ${game.opening}`} action={`${resultBadge(game.result)} · ${studiedCount}/${FAMOUS_GAMES.length} studied`} />
+          <Progress value={step} max={game.moves.length} label={`Move ${step} of ${game.moves.length}`} />
+        </>
+      }
+      coach={
+        <>
+          {step >= game.moves.length && studied[gameId] && (
+            <CelebrateSummary stars={3} xp={10} perfect onNext={handleNextGame} onRetry={() => { setAuto(false); setStep(0); }} />
+          )}
+          <CoachCallout
+            text={step === 0 ? 'Press Watch or step through with Next. Every move carries a coaching note explaining why it was played.' : (currentNote ?? '')}
+            avatar="📖"
+          />
+          <Accordion
+            items={[
+              { title: 'Game info', content: (<p className="v2-prose">{game.tagline} {game.story}</p>) },
+              {
+                title: 'Navigate',
+                content: (
+                  <div className="v2-controlsrow">
+                    <Button level="tonal" label="← Prev game" onClick={() => gameIndex > 0 && selectGame(FAMOUS_GAMES[gameIndex - 1].id)} />
+                    <Button label="Next game →" onClick={handleNextGame} />
+                    {!studied[gameId] && step >= game.moves.length && (
+                      <Button level="tonal" label="✓ Mark as studied" onClick={toggleStudied} />
+                    )}
+                  </div>
+                ),
+              },
+            ]}
+          />
+        </>
+      }
+      board={
         <Board
           fen={fen}
           orientation={flipped ? 'black' : 'white'}
@@ -175,80 +181,42 @@ export default function FamousGames() {
           highlights={highlights}
           getLegalTargets={() => []}
         />
-        <div className="step-controls">
-          <button className="btn" onClick={() => { setAuto(false); setStep(0); }}>⏮ Start</button>
-          <button className="btn" onClick={() => { setAuto(false); setStep((s) => Math.max(0, s - 1)); }}>← Prev</button>
-          <span className="step-count">Move {step} / {game.moves.length}</span>
-          <button className="btn" onClick={() => { setAuto(false); setStep((s) => Math.min(game.moves.length, s + 1)); }}>Next →</button>
-          <button className={`btn ${auto ? 'primary' : ''}`} onClick={() => { if (step >= game.moves.length) setStep(0); setAuto((a) => !a); }}>
-            {auto ? '⏸ Pause' : '▶ Watch'}
-          </button>
-          <button className="btn" onClick={() => setFlipped((f) => !f)}>🔄 Flip</button>
-        </div>
-        <div className="move-strip">
-          {sans.map((s, i) => (
-            <button key={i} className={`move-chip clickable ${i === step - 1 ? 'current' : ''}`} onClick={() => { setAuto(false); setStep(i + 1); }}>
-              {i % 2 === 0 ? `${i / 2 + 1}. ` : ''}{s}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      <div className="side-col tb-aside tb-coachacc">
-        <TbCoachAcc defaultOpen={0} single={true}>
-          <TbCoachAccItem title="Game info">
-        <div className="card">
-          <h2>{game.white} – {game.black}</h2>
-          <p className="muted">{game.event} · {game.site} · {game.year} · {game.eco} {game.opening}</p>
-          <p className="result-line"><strong>{resultBadge(game.result)}</strong> · {game.moves.length} plies · <span className="pill small">{gameEra(game.year)}</span></p>
-          <p className="coach-text"><em>{game.tagline}</em></p>
-          <p className="coach-text">{game.story}</p>
-        </div>
-          </TbCoachAccItem>
-
-          <TbCoachAccItem title="Coaching notes">
-        <div className="card coach">
-          {step === 0 ? (
-            <>
-              <h3>📖 How to study</h3>
-              <p>Press <strong>Watch</strong> or step through with Next. Every move carries a coaching note explaining <em>why</em> it was played — plans, threats, mistakes and all.</p>
-            </>
-          ) : (
-            <>
-              <h3>
-                <span className="coach-move">{Math.ceil(step / 2)}{step % 2 === 1 ? '.' : '…'} {currentSan}</span>
-              </h3>
-              <p>{currentNote}</p>
-            </>
-          )}
-          {step >= game.moves.length && (
-            <div className="btn-row wrap">
-              <button className="btn primary" onClick={toggleStudied}>
-                {studied[gameId] ? '✅ Studied!' : 'Mark as studied'}
-              </button>
-              {gameIndex < FAMOUS_GAMES.length - 1 && (
-                <button className="btn" onClick={() => selectGame(FAMOUS_GAMES[gameIndex + 1].id)}>Next game →</button>
-              )}
-            </div>
-          )}
-        </div>
-          </TbCoachAccItem>
-
-          <TbCoachAccItem title="Navigate">
-        <div className="card">
-          <h3>Navigate</h3>
-          <div className="btn-row">
-            <button className="btn" disabled={gameIndex === 0} onClick={() => selectGame(FAMOUS_GAMES[gameIndex - 1].id)}>← Prev game</button>
-            <button className="btn" disabled={gameIndex === FAMOUS_GAMES.length - 1} onClick={() => selectGame(FAMOUS_GAMES[gameIndex + 1].id)}>Next game →</button>
+      }
+      hint={step === 0 ? 'Starting position — press Watch.' : (currentSan ? `Last move: ${currentSan}` : null)}
+      controls={
+        <>
+          <div className="v2-controlsrow">
+            <Button level="tonal" label="⏮ Start" onClick={() => { setAuto(false); setStep(0); }} />
+            <Button level="tonal" label="← Prev" onClick={() => { setAuto(false); setStep((s) => Math.max(0, s - 1)); }} />
+            <Button label="Next →" onClick={() => { setAuto(false); setStep((s) => Math.min(game.moves.length, s + 1)); }} />
+            <Button level="tonal" label={auto ? '⏸ Pause' : '▶ Watch'} onClick={() => { if (step >= game.moves.length) setStep(0); setAuto((a) => !a); }} />
+            <Button level="tonal" label="🔄 Flip" onClick={() => setFlipped((f) => !f)} />
+            <Button level="text" label="☰ Library" onClick={() => setDrawerOpen(true)} />
           </div>
-          <p className="muted small" style={{ marginTop: 8 }}>
-            Game {gameIndex + 1} of 100 · {sans.filter((s) => s.includes('x')).length} captures · {sans.filter((s) => s.includes('+') || s.includes('#')).length} checks
-          </p>
-        </div>
-          </TbCoachAccItem>
-        </TbCoachAcc>
-      </div>
-      <TbActionBar actions={[{ id: 'watch', label: auto ? 'Pause' : 'Watch', onClick: handleWatch, primary: true }, { id: 'next-game', label: 'Next game', onClick: handleNextGame }]} />
-    </div>
+          <div className="v2-controlsrow">
+            {sans.map((s, i) => (
+              <Chip key={i} label={`${i % 2 === 0 ? `${i / 2 + 1}. ` : ''}${s}`} active={i === step - 1} onClick={() => { setAuto(false); setStep(i + 1); }} />
+            ))}
+          </div>
+        </>
+      }
+      list={
+        <>
+          <SectionHeader title="Library" sub="100 classics, every move explained." action={`${studiedCount}/100 studied`} />
+          <SearchField value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search player, event, opening…" />
+          <div className="v2-controlsrow">
+            {eras.map((e) => (
+              <Chip key={e} label={e === 'All' ? 'All' : e.replace(' Era', '').replace('Cold War Duels', 'Cold War').replace('Modern Masters', 'Modern').replace('Soviet School', 'Soviet')} active={eraFilter === e} onClick={() => setEraFilter(e)} />
+            ))}
+          </div>
+          <UpNextDrawer
+            open={drawerOpen}
+            items={drawerItems}
+            onSelect={(id) => { selectGame(id); setDrawerOpen(false); }}
+            onClose={() => setDrawerOpen(false)}
+          />
+        </>
+      }
+    />
   );
 }

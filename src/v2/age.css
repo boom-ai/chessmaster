@@ -1,0 +1,10 @@
+/* Age-comfort modes (preserves previous kid/senior behavior on the v2 system). */
+.v2-age-kid {
+  line-height: 1.7;
+  letter-spacing: 0.01em;
+}
+
+.v2-age-senior {
+  font-size: 19px;
+  line-height: 1.6;
+}

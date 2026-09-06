@@ -2,13 +2,10 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { Chess } from 'chess.js';
 import Board from './Board.jsx';
 import { STRATEGY } from '../data/strategy.js';
-import { CmLearnAffordance } from './CmLearnAffordance.jsx';
-import { UxSectionHeader } from '../ux-section/UxSection.jsx';
-import { CmProgressBar } from './CmStars.jsx';
+import { Button, SectionHeader, Progress, CoachCallout, Chip, SearchField, Accordion } from '../v2/ui/Kit.jsx';
+import { LessonPage, UpNextDrawer, CelebrateSummary } from '../v2/lesson/LessonPage.jsx';
 import { awardStar } from '../utils/cmProgressStore.js';
 import { readAutoplayMs } from '../hooks/cmDisplayMode.js';
-import { TbCoachAcc, TbCoachAccItem } from './TbCoachAcc.jsx';
-import { TbActionBar } from './TbActionBar.jsx';
 
 function playUci(game, uci) {
   return game.move({ from: uci.slice(0, 2), to: uci.slice(2, 4), promotion: uci[4] });
@@ -218,50 +215,48 @@ export default function StrategyCoach({ phase }) {
       return null;
     }
   }, [lesson]);
+  const [drawerOpen, setDrawerOpen] = useState(false);
+  const q = query.trim().toLowerCase();
+  const flatItems = lessons
+    .filter((l) => !q || l.title.toLowerCase().includes(q) || l.tagline.toLowerCase().includes(q))
+    .map((l) => ({ id: l.id, title: l.title, done: !!progress[l.id]?.practiced }));
+
+  const goNextLesson = () => {
+    const i = lessons.findIndex((l) => l.id === lessonId);
+    selectLesson(lessons[(i + 1) % lessons.length].id);
+  };
+
+  const coachText = practice
+    ? (pDone ? 'Drill complete! Technique banked.' : (lesson.drill?.about ?? ''))
+    : step === 0
+      ? 'Step through with the arrows: green is your move, red is the opponent, yellow marks key squares. Then test yourself in Drill mode.'
+      : (currentStep?.explanation ?? '');
+  const sectionTitle = phase === 'middlegame' ? 'Middlegame Coach' : 'Endgame Coach';
 
   return (
-    <div className="learn-layout tb-flow tb-lesson">
-      <div style={{ gridColumn: '1 / -1' }}>
-        <UxSectionHeader eyebrow={phase === 'middlegame' ? 'Attack' : 'Technique'} title={phase === 'middlegame' ? 'Middlegame Coach' : 'Endgame Coach'} sub="Watch the idea, then prove it in Drill mode." meta={`${doneCount}/${lessons.length} practiced`} />
-      </div>
-      <aside className="open-list tb-rail">
-        <h3>{phase === 'middlegame' ? 'Middlegame' : phase === 'endgame' ? 'Endgame' : 'Strategy'} <span className="muted small">{doneCount}/{lessons.length} practiced</span></h3>
-        <CmProgressBar done={doneCount} total={lessons.length} />
-        <input
-          className="search-box"
-          type="search"
-          placeholder={`Search ${lessons.length} lessons…`}
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          aria-label="Search lessons"
-        />
-        {groups.map((group) => {
-          const q = query.trim().toLowerCase();
-          const items = lessons.filter((l) => l.phase === group.phase)
-            .filter((l) => !q || l.title.toLowerCase().includes(q) || l.tagline.toLowerCase().includes(q));
-          const done = items.filter((l) => progress[l.id]?.practiced).length;
-          return (
-            <div key={group.phase} className="open-group">
-              <div className="open-group-head" title={group.desc}>
-                <span>{group.title}</span>
-                <span className="muted small">{done}/{items.length}</span>
-              </div>
-              {items.map((l) => (
-                <button key={l.id} className={`open-item ${l.id === lessonId ? 'active' : ''}`} onClick={() => selectLesson(l.id)}>
-                  <span className="open-name">{progress[l.id]?.practiced ? '✅ ' : ''}{l.title}</span>
-                  <span className="open-tags">
-                    <span className="pill small">{l.level}</span>
-                    <span className="pill small">{l.phase}</span>
-                  </span>
-                </button>
-              ))}
-            </div>
-          );
-        })}
-      </aside>
-
-      <div className="board-col tb-main tb-board tb-stick">
-        <CmLearnAffordance mode="learn" stepIndex={practice ? 1 : step} onStartPractice={startPractice} />
+    <LessonPage
+      progress={
+        <>
+          <SectionHeader title={lesson.title} sub={`${lesson.level} • ${lesson.phase} • ${lesson.tagline}`} action={`${doneCount}/${lessons.length} practiced`} />
+          <Progress value={practice ? pPly : step} max={practice ? (lesson.drill?.moves.length ?? 1) : lesson.mainline.length} label={practice ? `Drill ${Math.min(pPly + 1, lesson.drill?.moves.length ?? 0)} of ${lesson.drill?.moves.length ?? 0}` : `Move ${step} of ${lesson.mainline.length}`} />
+        </>
+      }
+      coach={
+        <>
+          {pDone && <CelebrateSummary stars={3} xp={10} perfect onNext={goNextLesson} onRetry={startPractice} />}
+          <CoachCallout text={coachText} avatar="♟" />
+          <Accordion
+            items={[
+              { title: '🔑 Key ideas', content: (<ul className="v2-ideas">{lesson.keyIdeas.map((k, i) => <li key={i}>{k}</li>)}</ul>) },
+              ...(lesson.phase === 'endgame' && drillEndFen ? [{ title: '♜ Tablebase check', content: (<><code className="v2-code">{drillEndFen}</code><p><a className="v2-link" href={`https://tablebase.lichess.ovh/standard?fen=${encodeURIComponent(drillEndFen)}`} target="_blank" rel="noreferrer">Open tablebase ↗</a></p></>) }] : []),
+            ]}
+          />
+          {!practice && step >= lesson.mainline.length && lesson.drill && (
+            <Button label="🎯 Practice the drill" onClick={startPractice} />
+          )}
+        </>
+      }
+      board={
         <Board
           fen={boardFen}
           orientation={orientation}
@@ -283,103 +278,48 @@ export default function StrategyCoach({ phase }) {
             }
           }}
         />
-        <div className="step-controls">
+      }
+      hint={practice ? pMsg : (step === 0 ? 'Starting position — press Next.' : null)}
+      controls={
+        <>
           {!practice ? (
-            <>
-              <button className="btn" onClick={() => { setAuto(false); setStep(0); }}>⏮ Start</button>
-              <button className="btn" onClick={() => { setAuto(false); setStep((s) => Math.max(0, s - 1)); }}>← Prev</button>
-              <span className="step-count">Move {step} / {lesson.mainline.length}</span>
-              <button className="btn" onClick={() => { setAuto(false); setStep((s) => Math.min(lesson.mainline.length, s + 1)); }}>Next →</button>
-              <button className={`btn ${auto ? 'primary' : ''}`} onClick={() => { if (step >= lesson.mainline.length) setStep(0); setAuto((a) => !a); }}>{auto ? '⏸ Pause' : '▶ Watch'}</button>
-            </>
-          ) : (
-            <>
-              <span className="step-count">Drill: move {Math.min(pPly + 1, lesson.drill?.moves.length ?? 0)} / {lesson.drill?.moves.length ?? 0}</span>
-              <button className="btn" onClick={exitPractice}>✕ Exit drill</button>
-              <button className="btn" onClick={startPractice}>↺ Restart</button>
-            </>
-          )}
-          <button className="btn" onClick={() => setFlipped((f) => !f)}>🔄 Flip</button>
-        </div>
-        {practice && <div className="status-line"><strong>{pMsg}</strong></div>}
-        {!practice && (
-          <div className="move-strip">
-            {sans.length === 0 && <span className="muted">Starting position — press Next.</span>}
-            {sans.map((s, i) => (
-              <button key={i} className={`move-chip clickable ${i === step - 1 ? 'current' : ''}`} onClick={() => { setAuto(false); setStep(i + 1); }}>
-                {s}
-              </button>
-            ))}
-          </div>
-        )}
-      </div>
-
-      <div className="side-col tb-aside tb-coachacc">
-        <TbCoachAcc defaultOpen={0} single={true}>
-          <TbCoachAccItem title="Lesson">
-        <div className="card">
-          <h2>{lesson.title}</h2>
-          <p className="muted">{lesson.level} • {lesson.phase} • {lesson.tagline}</p>
-          <p className="coach-text">{lesson.description}</p>
-          <h4>🔑 Key ideas</h4>
-          <ul className="ideas">
-            {lesson.keyIdeas.map((k, i) => <li key={i}>{k}</li>)}
-          </ul>
-        </div>
-
-          </TbCoachAccItem>
-          <TbCoachAccItem title="Coach">
-        <div className="card coach">
-          {!practice ? (
-            step === 0 ? (
-              <>
-                <h3>♟ Your lesson</h3>
-                <p>Step through with the arrows: <span className="sw green" /> = your move, <span className="sw red" /> = opponent, <span className="sw yellow" /> = key square. Then test yourself in Drill mode.</p>
-                {lesson.drill && (
-                  <div className="btn-row">
-                    <button className="btn primary" onClick={startPractice}>🎯 Drill: {lesson.drill.about}</button>
-                  </div>
-                )}
-              </>
-            ) : (
-              <>
-                <h3>{sans[step - 1] && <span className="coach-move">{sans[step - 1]}</span>}</h3>
-                <p>{currentStep?.explanation}</p>
-                {step >= lesson.mainline.length && lesson.drill && (
-                  <div className="btn-row">
-                    <button className="btn primary" onClick={startPractice}>🎯 Practice the drill</button>
-                  </div>
-                )}
-              </>
-            )
-          ) : (
-            <>
-              <h3>🎯 Drill mode</h3>
-              <p>{pDone ? 'Drill complete! Technique banked.' : lesson.drill?.about}</p>
-              {!pDone && lesson.drill && pPly < lesson.drill.moves.length && (
-                <p className="muted small">Coach whispers: {lesson.mainline[Math.min(step, lesson.mainline.length - 1)]?.explanation ?? 'Follow the plan.'}</p>
-              )}
-              {pDone && <div className="btn-row"><button className="btn" onClick={exitPractice}>← Back to lesson</button></div>}
-            </>
-          )}
-        </div>
-
-          </TbCoachAccItem>
-          {lesson.phase === 'endgame' && drillEndFen && (
-          <TbCoachAccItem title="Tablebase check">
-          <div className="card">
-            <h3>♜ Tablebase check</h3>
-            <p className="muted small">Drill-end FEN (verified legal; check WDL):</p>
-            <code className="small">{drillEndFen}</code>
-            <div className="btn-row">
-              <a className="btn" href={`https://tablebase.lichess.ovh/standard?fen=${encodeURIComponent(drillEndFen)}`} target="_blank" rel="noreferrer">Open tablebase ↗</a>
+            <div className="v2-controlsrow">
+              <Button level="tonal" label="⏮ Start" onClick={() => { setAuto(false); setStep(0); }} />
+              <Button level="tonal" label="← Prev" onClick={() => { setAuto(false); setStep((s) => Math.max(0, s - 1)); }} />
+              <Button label="Next →" onClick={() => { setAuto(false); setStep((s) => Math.min(lesson.mainline.length, s + 1)); }} />
+              <Button level="tonal" label={auto ? '⏸ Pause' : '▶ Watch'} onClick={() => { if (step >= lesson.mainline.length) setStep(0); setAuto((a) => !a); }} />
+              <Button level="tonal" label="🔄 Flip" onClick={() => setFlipped((f) => !f)} />
+              {lesson.drill && <Button level="tonal" label="🎯 Drill" onClick={startPractice} />}
+              <Button level="text" label="☰ Lessons" onClick={() => setDrawerOpen(true)} />
             </div>
-          </div>
-          </TbCoachAccItem>
-        )}
-        </TbCoachAcc>
-      </div>
-      <TbActionBar actions={[{ id: 'practice', label: 'Practice drill', onClick: startPractice, primary: true }, { id: 'watch', label: 'Watch', onClick: () => setAuto((a) => !a) }]} />
-    </div>
+          ) : (
+            <div className="v2-controlsrow">
+              <Button level="text" label="✕ Exit drill" onClick={exitPractice} />
+              <Button level="tonal" label="↺ Restart" onClick={startPractice} />
+              <Button level="tonal" label="🔄 Flip" onClick={() => setFlipped((f) => !f)} />
+            </div>
+          )}
+          {!practice && (
+            <div className="v2-controlsrow">
+              {sans.map((s, i) => (
+                <Chip key={i} label={s} active={i === step - 1} onClick={() => { setAuto(false); setStep(i + 1); }} />
+              ))}
+            </div>
+          )}
+        </>
+      }
+      list={
+        <>
+          <SectionHeader title={sectionTitle} sub={phase === 'middlegame' ? 'Plans, structures and attacks.' : 'Must-know technique.'} action={`${doneCount}/${lessons.length}`} />
+          <SearchField value={query} onChange={(e) => setQuery(e.target.value)} placeholder={`Search ${lessons.length} lessons…`} />
+          <UpNextDrawer
+            open={drawerOpen}
+            items={flatItems}
+            onSelect={(id) => { selectLesson(id); setDrawerOpen(false); }}
+            onClose={() => setDrawerOpen(false)}
+          />
+        </>
+      }
+    />
   );
 }

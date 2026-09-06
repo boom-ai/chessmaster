@@ -14,13 +14,14 @@ page.on('pageerror', (e) => console.log('PAGEERROR:', e.message));
 await page.goto('http://127.0.0.1:4173/', { waitUntil: 'networkidle' });
 await page.waitForTimeout(2500);
 
-const tabs = ['start', 'play', 'puzzles', 'learn', 'middlegame', 'endgame', 'games', 'guide'];
+const tabs = ['start', 'play', 'puzzles', 'openings', 'middlegame', 'endgame', 'games', 'guide'];
+const labels = { start: 'start here', play: 'play', puzzles: 'puzzles', openings: 'openings', middlegame: 'middlegame', endgame: 'endgame', games: 'famous', guide: 'guide' };
 for (const t of tabs) {
-  await page.evaluate((tab) => {
-    const btns = [...document.querySelectorAll('.tab')];
-    const map = { start: 0, play: 1, puzzles: 2, learn: 3, middlegame: 4, endgame: 5, games: 6, guide: 7 };
-    btns[map[tab]]?.click();
-  }, t);
+  await page.evaluate(({ tab, want }) => {
+    const btns = [...document.querySelectorAll('.v2-bottomnav-item,.v2-rail-item,.v2-sidebar-item')];
+    const visible = btns.filter((b) => b.getBoundingClientRect().width > 0);
+    visible.find((b) => b.textContent.toLowerCase().includes(want))?.click();
+  }, { tab: t, want: labels[t] });
   await page.waitForTimeout(1500);
   await page.screenshot({ path: `/tmp/shots/${t}-top.png` });
   await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));

@@ -1,0 +1,198 @@
+.v2-lesson {
+  display: flex;
+  flex-direction: column;
+  gap: var(--v2-space-1, 4px);
+  padding: var(--v2-margin-phone, 16px);
+  background: var(--v2-surface-1, #f8fafc);
+  color: var(--v2-on-surface, #1a1c1e);
+  font-family: var(--v2-font, system-ui, sans-serif);
+  font-size: var(--v2-body-size, 16px);
+  line-height: var(--v2-body-lh, 1.5);
+}
+
+.v2-lesson__progress {
+  order: 1;
+  display: flex;
+  align-items: center;
+  gap: var(--v2-space-1, 4px);
+}
+
+.v2-lesson__coach {
+  order: 2;
+}
+
+.v2-lesson__board {
+  order: 3;
+  position:sticky;
+  top: 0;
+  z-index: 5;
+  width: 100%;
+  max-width: 100%;
+  aspect-ratio:1/1;
+  overflow: hidden;
+  background: var(--v2-surface, #ffffff);
+  border: 1px solid var(--v2-outline-variant, #e1e3e1);
+  border-radius: var(--v2-radius-16, 16px);
+}
+
+.v2-lesson__hint {
+  order: 4;
+  color: var(--v2-on-surface-variant, #5f6368);
+  font: var(--v2-label, 500 14px/20px system-ui, sans-serif);
+}
+
+.v2-lesson__controls {
+  order: 5;
+  position:sticky;
+  bottom: 0;
+  z-index: 5;
+  display: flex;
+  gap: var(--v2-space-1, 4px);
+  padding: var(--v2-space-1, 4px);
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+  background: var(--v2-surface, #ffffff);
+  border-top: 1px solid var(--v2-outline-variant, #e1e3e1);
+}
+
+.v2-lesson__list {
+  order: 6;
+  display: flex;
+  flex-direction: column;
+  gap: var(--v2-space-1, 4px);
+}
+
+.v2-lesson__list:focus {
+  outline: 2px solid var(--v2-primary, #16a34a);
+}
+
+.v2-upnext {
+  position: fixed;
+  inset: 0;
+  z-index: 20;
+  display: none;
+}
+
+.v2-upnext--open {
+  display: block;
+}
+
+.v2-upnext__scrim {
+  position: absolute;
+  inset: 0;
+  background: var(--v2-surface-5, #cbd5e1);
+}
+
+.v2-celebrate {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--v2-space-1, 4px);
+  overflow: hidden;
+  padding: var(--v2-margin-phone, 16px);
+  background: var(--v2-surface, #ffffff);
+  border: 1px solid var(--v2-outline-variant, #e1e3e1);
+  border-radius: var(--v2-radius-28, 28px);
+  text-align: center;
+}
+
+.v2-celebrate__stars {
+  position: relative;
+  display: flex;
+  justify-content: center;
+  gap: var(--v2-space-1, 4px);
+  color: var(--v2-primary, #16a34a);
+  font: var(--v2-title-l, 700 22px/28px system-ui, sans-serif);
+}
+
+.v2-celebrate__stars span:empty {
+  position: absolute;
+  top: 0;
+  width: var(--v2-space-1, 4px);
+  height: var(--v2-space-1, 4px);
+  background: var(--v2-primary, #16a34a);
+  animation: lesson-confetti-fall var(--v2-dur-confetti, 1000ms) var(--v2-ease-standard, ease) infinite;
+}
+
+.v2-streak-chip {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  padding: 8px 12px;
+  border-radius: var(--v2-radius-full, 999px);
+  background: var(--v2-primary-container, #dcfce7);
+  color: var(--v2-on-primary-container, #052e16);
+  font: var(--v2-label, 500 14px/20px system-ui, sans-serif);
+}
+
+@keyframes lesson-confetti-fall {
+  from {
+    transform: translateY(-10%) rotate(0deg);
+    opacity: 1;
+  }
+  to {
+    transform: translateY(120%) rotate(360deg);
+    opacity: 0;
+  }
+}
+
+@media (min-width:600px) {
+  .v2-lesson {
+    padding: var(--v2-margin-desktop, 24px);
+  }
+  .v2-lesson__board {
+    max-width: 640px;
+    margin-inline: auto;
+  }
+  .v2-lesson__controls {
+    max-width: 640px;
+    width: 100%;
+    margin-inline: auto;
+  }
+  .v2-celebrate {
+    padding: var(--v2-margin-desktop, 24px);
+  }
+}
+
+@media (min-width:1024px) {
+  .v2-lesson {
+    display: grid;
+    grid-template-columns: 240px minmax(0, 640px) 320px;
+    justify-content: center;
+    align-items: start;
+  }
+  .v2-lesson__progress {
+    grid-column: 1 / -1;
+  }
+  .v2-lesson__list {
+    grid-column: 1;
+  }
+  .v2-lesson__board {
+    grid-column: 2;
+    position:sticky;
+    top: var(--v2-margin-desktop, 24px);
+  }
+  .v2-lesson__coach {
+    grid-column: 3;
+  }
+  .v2-lesson__hint {
+    grid-column: 3;
+  }
+  .v2-lesson__controls {
+    grid-column: 3;
+    position:sticky;
+    bottom: var(--v2-margin-desktop, 24px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .v2-celebrate__stars span:empty {
+    animation: none;
+  }
+  .v2-lesson__board {
+    position: static;
+  }
+  .v2-lesson__controls {
+    position: static;
+  }
+}

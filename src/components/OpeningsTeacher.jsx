@@ -2,13 +2,10 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { Chess } from 'chess.js';
 import Board from './Board.jsx';
 import { OPENINGS, getOpening } from '../data/openings.js';
-import { CmLearnAffordance } from './CmLearnAffordance.jsx';
-import { UxSectionHeader } from '../ux-section/UxSection.jsx';
-import { CmProgressBar } from './CmStars.jsx';
+import { Button, SectionHeader, Progress, CoachCallout, Chip, SearchField, Accordion } from '../v2/ui/Kit.jsx';
+import { LessonPage, UpNextDrawer, CelebrateSummary } from '../v2/lesson/LessonPage.jsx';
 import { awardStar } from '../utils/cmProgressStore.js';
 import { readAutoplayMs } from '../hooks/cmDisplayMode.js';
-import { TbCoachAcc, TbCoachAccItem } from './TbCoachAcc.jsx';
-import { TbActionBar } from './TbActionBar.jsx';
 
 function replay(ucis, n) {
   const g = new Chess();
@@ -196,54 +193,59 @@ export default function OpeningsTeacher() {
   const currentStep = !practice && step > 0 && isMain ? opening.mainline[step - 1] : null;
 
   const practicedCount = OPENINGS.filter((o) => progress[o.id]?.practiced).length;
+  const [drawerOpen, setDrawerOpen] = useState(false);
+
+  const q = query.trim().toLowerCase();
+  const flatItems = OPENINGS
+    .filter((o) => !q || o.name.toLowerCase().includes(q) || o.eco.toLowerCase().includes(q) || o.tagline.toLowerCase().includes(q))
+    .map((o) => ({ id: o.id, title: o.name, done: !!progress[o.id]?.practiced }));
+
+  const goNextOpening = () => {
+    const i = OPENINGS.findIndex((o) => o.id === openingId);
+    selectOpening(OPENINGS[(i + 1) % OPENINGS.length].id);
+  };
+
+  const coachText = practice
+    ? (pDone ? 'Line complete! This opening is now in your repertoire.' : `You play ${opening.forColor === 'w' ? 'White' : 'Black'}. Next up: move ${Math.min(pPly + 1, lineUcis.length)} of ${lineUcis.length}.`)
+    : step === 0
+      ? `Step through the ${isMain ? 'main line' : opening.variations[varIndex].name} with the arrows: green is your move, red is the opponent, yellow marks key squares. Then test yourself in Practice mode.`
+      : (isMain ? currentStep?.explanation : variationCoachText(step, lineUcis.length));
 
   return (
-    <div className="learn-layout tb-flow tb-lesson">
-      <div style={{ gridColumn: '1 / -1' }}>
-        <UxSectionHeader eyebrow="Learn" title="Openings Coach" sub="Step through with the arrows, then test yourself in Practice mode." meta={`${practicedCount}/${OPENINGS.length} practiced`} />
-      </div>
-      <aside className="open-list tb-rail">
-        <h3>Repertoire <span className="muted small">{practicedCount}/{OPENINGS.length} practiced</span></h3>
-        <CmProgressBar done={practicedCount} total={OPENINGS.length} />
-        <input
-          className="search-box"
-          type="search"
-          placeholder="Search 100 openings…"
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          aria-label="Search openings"
-        />
-        {[
-          { color: 'w', title: '♔ White openings', desc: 'Play these as White' },
-          { color: 'b', title: '♚ Black openings', desc: 'Play these as Black' },
-        ].map((group) => {
-          const q = query.trim().toLowerCase();
-          const items = OPENINGS.filter((o) => o.forColor === group.color)
-            .filter((o) => !q || o.name.toLowerCase().includes(q) || o.eco.toLowerCase().includes(q) || o.tagline.toLowerCase().includes(q));
-          if (q && items.length === 0) return null;
-          const done = items.filter((o) => progress[o.id]?.practiced).length;
-          return (
-            <div key={group.color} className="open-group">
-              <div className="open-group-head" title={group.desc}>
-                <span>{group.title}</span>
-                <span className="muted small">{done}/{items.length}</span>
-              </div>
-              {items.map((o) => (
-                <button key={o.id} className={`open-item ${o.id === openingId ? 'active' : ''}`} onClick={() => selectOpening(o.id)}>
-                  <span className="open-name">{progress[o.id]?.practiced ? '✅ ' : ''}{o.name}</span>
-                  <span className="open-tags">
-                    <span className="pill small">{o.level}</span>
-                    <span className="pill small">{o.eco}</span>
-                  </span>
-                </button>
-              ))}
-            </div>
-          );
-        })}
-      </aside>
-
-      <div className="board-col tb-main tb-board tb-stick">
-        <CmLearnAffordance mode="learn" stepIndex={practice ? 1 : step} onStartPractice={startPractice} />
+    <LessonPage
+      progress={
+        <>
+          <SectionHeader title={opening.name} sub={`${opening.eco} • ${opening.tagline}`} action={`${practicedCount}/${OPENINGS.length} practiced`} />
+          <Progress value={practice ? pPly : step} max={lineUcis.length} label={practice ? `Practice ${Math.min(pPly + 1, lineUcis.length)} of ${lineUcis.length}` : `Move ${step} of ${lineUcis.length}`} />
+        </>
+      }
+      coach={
+        <>
+          {pDone && <CelebrateSummary stars={3} xp={10} perfect onNext={goNextOpening} onRetry={startPractice} />}
+          <CoachCallout text={coachText} avatar="♟" />
+          {!practice && !pDone && <CoachNext opening={opening} isMain={isMain} pPly={pPly} lineUcis={lineUcis} varIndex={varIndex} />}
+          <Accordion
+            items={[
+              { title: '🔑 Key ideas', content: (<ul className="v2-ideas">{opening.keyIdeas.map((k, i) => <li key={i}>{k}</li>)}</ul>) },
+              {
+                title: 'Lines',
+                content: (
+                  <>
+                    <div className="v2-controlsrow">
+                      <Chip label="📖 Main line" active={isMain} onClick={() => selectLine('main')} />
+                      {opening.variations.map((v, i) => (
+                        <Chip key={v.name} label={v.name} active={lineSel === `var:${i}`} onClick={() => selectLine(`var:${i}`)} />
+                      ))}
+                    </div>
+                    {!isMain && <p className="v2-prose">{opening.variations[varIndex].description}</p>}
+                  </>
+                ),
+              },
+            ]}
+          />
+        </>
+      }
+      board={
         <Board
           fen={boardFen}
           orientation={orientation}
@@ -265,100 +267,48 @@ export default function OpeningsTeacher() {
             }
           }}
         />
-        <div className="step-controls">
+      }
+      hint={practice ? null : (step === 0 ? 'Starting position — press Next.' : null)}
+      controls={
+        <>
           {!practice ? (
-            <>
-              <button className="btn" onClick={() => { setAuto(false); setStep(0); }}>⏮ Start</button>
-              <button className="btn" onClick={() => { setAuto(false); setStep((s) => Math.max(0, s - 1)); }}>← Prev</button>
-              <span className="step-count">Move {step} / {lineUcis.length}</span>
-              <button className="btn" onClick={() => { setAuto(false); setStep((s) => Math.min(lineUcis.length, s + 1)); }}>Next →</button>
-              <button className={`btn ${auto ? 'primary' : ''}`} onClick={() => { if (step >= lineUcis.length) setStep(0); setAuto((a) => !a); }}>{auto ? '⏸ Pause' : '▶ Watch'}</button>
-            </>
+            <div className="v2-controlsrow">
+              <Button level="tonal" label="⏮ Start" onClick={() => { setAuto(false); setStep(0); }} />
+              <Button level="tonal" label="← Prev" onClick={() => { setAuto(false); setStep((s) => Math.max(0, s - 1)); }} />
+              <Button label="Next →" onClick={() => { setAuto(false); setStep((s) => Math.min(lineUcis.length, s + 1)); }} />
+              <Button level="tonal" label={auto ? '⏸ Pause' : '▶ Watch'} onClick={() => { if (step >= lineUcis.length) setStep(0); setAuto((a) => !a); }} />
+              <Button level="tonal" label="🔄 Flip" onClick={() => setFlipped((f) => !f)} />
+              <Button level="tonal" label="🎯 Practice" onClick={startPractice} />
+              <Button level="text" label="☰ Lessons" onClick={() => setDrawerOpen(true)} />
+            </div>
           ) : (
-            <>
-              <span className="step-count">Practice: move {Math.min(pPly + 1, lineUcis.length)} / {lineUcis.length}</span>
-              <button className="btn" onClick={exitPractice}>✕ Exit practice</button>
-              <button className="btn" onClick={startPractice}>↺ Restart</button>
-            </>
+            <div className="v2-controlsrow">
+              <Button level="text" label="✕ Exit practice" onClick={exitPractice} />
+              <Button level="tonal" label="↺ Restart" onClick={startPractice} />
+              <Button level="tonal" label="🔄 Flip" onClick={() => setFlipped((f) => !f)} />
+            </div>
           )}
-          <button className="btn" onClick={() => setFlipped((f) => !f)}>🔄 Flip</button>
-        </div>
-        {practice && <div className="status-line"><strong>{pMsg}</strong></div>}
-        {!practice && (
-          <div className="move-strip">
-            {sans.length === 0 && <span className="muted">Starting position — press Next.</span>}
-            {sans.map((s, i) => (
-              <button key={i} className={`move-chip clickable ${i === step - 1 ? 'current' : ''}`} onClick={() => { setAuto(false); setStep(i + 1); }}>
-                {i % 2 === 0 ? `${i / 2 + 1}. ` : ''}{s}
-              </button>
-            ))}
-          </div>
-        )}
-      </div>
-
-      <div className="side-col tb-aside tb-coachacc">
-        <TbCoachAcc defaultOpen={0} single={true}>
-          <TbCoachAccItem title="Overview">
-        <div className="card">
-          <h2>{opening.name}</h2>
-          <p className="muted">{opening.eco} • {opening.tagline}</p>
-          <p className="coach-text">{opening.description}</p>
-          <h4>🔑 Key ideas</h4>
-          <ul className="ideas">
-            {opening.keyIdeas.map((k, i) => <li key={i}>{k}</li>)}
-          </ul>
-        </div>
-
-          </TbCoachAccItem>
-          <TbCoachAccItem title="Lines">
-        <div className="card">
-          <h3>Lines</h3>
-          <div className="btn-row wrap">
-            <button className={`btn ${isMain ? 'primary' : ''}`} onClick={() => selectLine('main')}>📖 Main line</button>
-            {opening.variations.map((v, i) => (
-              <button key={v.name} className={`btn ${lineSel === `var:${i}` ? 'primary' : ''}`} onClick={() => selectLine(`var:${i}`)}>{v.name}</button>
-            ))}
-          </div>
-          {!isMain && <p className="coach-text var-desc">{opening.variations[varIndex].description}</p>}
-        </div>
-
-          </TbCoachAccItem>
-          <TbCoachAccItem title="Coach">
-        <div className="card coach">
-          {!practice ? (
-            step === 0 ? (
-              <>
-                <h3>♟ Your lesson</h3>
-                <p>Step through the {isMain ? 'main line' : opening.variations[varIndex].name} with the arrows: <span className="sw green" /> = your move, <span className="sw red" /> = opponent, <span className="sw yellow" /> = key square. Then test yourself in Practice mode.</p>
-                <div className="btn-row">
-                  <button className="btn primary" onClick={startPractice}>🎯 Practice this line</button>
-                </div>
-              </>
-            ) : (
-              <>
-                <h3>{sans[step - 1] && <span className="coach-move">{Math.ceil(step / 2)}{step % 2 === 1 ? '.' : '…'} {sans[step - 1]}</span>}</h3>
-                <p>{isMain ? currentStep?.explanation : variationCoachText(step, lineUcis.length)}</p>
-                {step >= lineUcis.length && (
-                  <div className="btn-row">
-                    <button className="btn primary" onClick={startPractice}>🎯 Practice this line</button>
-                  </div>
-                )}
-              </>
-            )
-          ) : (
-            <>
-              <h3>🎯 Practice mode</h3>
-              <p>{pDone ? 'Line complete! This opening is now in your repertoire.' : `You play ${opening.forColor === 'w' ? 'White' : 'Black'}. Next up: move ${Math.min(pPly + 1, lineUcis.length)} of ${lineUcis.length}.`}</p>
-              {!pDone && <CoachNext opening={opening} isMain={isMain} pPly={pPly} lineUcis={lineUcis} varIndex={varIndex} />}
-              {pDone && <div className="btn-row"><button className="btn" onClick={exitPractice}>← Back to lesson</button></div>}
-            </>
+          {!practice && (
+            <div className="v2-controlsrow">
+              {sans.map((s, i) => (
+                <Chip key={i} label={`${i % 2 === 0 ? `${i / 2 + 1}. ` : ''}${s}`} active={i === step - 1} onClick={() => { setAuto(false); setStep(i + 1); }} />
+              ))}
+            </div>
           )}
-        </div>
-          </TbCoachAccItem>
-        </TbCoachAcc>
-      </div>
-      <TbActionBar actions={[{ id: 'practice', label: 'Practice this line', onClick: startPractice, primary: true }, { id: 'watch', label: 'Watch', onClick: () => setAuto((a) => !a) }]} />
-    </div>
+        </>
+      }
+      list={
+        <>
+          <SearchField value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search 100 openings…" />
+          <UpNextDrawer
+            open={drawerOpen}
+            items={flatItems}
+            onSelect={(id) => { selectOpening(id); setDrawerOpen(false); }}
+            onClose={() => setDrawerOpen(false)}
+          />
+        </>
+      }
+    />
   );
 }
 
@@ -371,7 +321,7 @@ function CoachNext({ opening, isMain, pPly, lineUcis, varIndex }) {
   const u = lineUcis[pPly];
   if (!u) return null;
   if (isMain) {
-    return <p className="muted small">Coach whispers: {opening.mainline[pPly]?.explanation}</p>;
+    return <p className="v2-progress__label">Coach whispers: {opening.mainline[pPly]?.explanation}</p>;
   }
-  return <p className="muted small">Variation: {opening.variations[varIndex].name} — play the next move of the line.</p>;
+  return <p className="v2-progress__label">Variation: {opening.variations[varIndex].name} — play the next move of the line.</p>;
 }

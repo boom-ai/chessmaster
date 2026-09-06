@@ -23,6 +23,7 @@ export default function Board({
   const [selected, setSelected] = useState(null);
   const [dots, setDots] = useState([]);
 
+
   useEffect(() => {
     setSelected(null);
     setDots([]);
@@ -62,7 +63,7 @@ export default function Board({
   }
 
   return (
-    <div className="board-wrap">
+    <div className="v2-boardwrap">
       <Chessboard
         options={{
           position: fen,
@@ -80,6 +81,7 @@ export default function Board({
             showDots(square);
           },
           onSquareClick: ({ piece, square }) => {
+
             if (selected) {
               if (square === selected) {
                 setSelected(null);
