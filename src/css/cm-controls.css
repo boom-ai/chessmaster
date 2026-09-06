@@ -1,0 +1,50 @@
+.cm-controls-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
+.cm-controls-btn {
+  min-height: 44px;
+  min-width: 44px;
+  padding: 10px 14px;
+  font-size: 14px;
+  line-height: 1.25;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--card);
+  color: var(--text-h);
+  cursor: pointer;
+}
+
+.cm-controls-note {
+  margin: 0;
+  font-size: 14px;
+  color: var(--text);
+}
+
+.cm-afford-overlay {
+  position: static;
+  display: block;
+  padding: 0 0 10px;
+  background: none;
+}
+
+.cm-afford-card {
+  max-width: none;
+  width: 100%;
+  padding: 10px 14px;
+  border: 1px solid var(--border);
+  border-left: 4px solid var(--accent, #22c55e);
+  border-radius: 12px;
+  background: var(--card);
+  color: var(--text-h);
+  box-shadow: var(--shadow);
+  text-align: left;
+}
+
+.cm-afford-card p {
+  margin: 0 0 8px;
+  font-size: 14px;
+}

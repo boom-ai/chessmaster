@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Chess } from 'chess.js';
 import Board from './Board.jsx';
-import { Button, SectionHeader, Progress, CoachCallout, Chip, SearchField, Accordion } from '../v2/ui/Kit.jsx';
-import { LessonPage, UpNextDrawer, CelebrateSummary } from '../v2/lesson/LessonPage.jsx';
+import { TbCoachAcc, TbCoachAccItem } from './TbCoachAcc.jsx';
+import { TbActionBar } from './TbActionBar.jsx';
+import { UxSectionHeader } from '../ux-section/UxSection.jsx';
 import { awardStar } from '../utils/cmProgressStore.js';
 import { getEngine } from '../engine/stockfish.js';
 import { randomMove } from '../engine/fallbackEngine.js';
@@ -398,155 +399,203 @@ export default function PlayVsEngine() {
     ? `You ${side === 'w' ? '♔' : '♚'}`
     : `Stockfish ${level.name}`);
   const playerBar = (side) => (
-    <div className="v2-playerbar">
-      <span aria-hidden="true">{side === playerColor ? '👤' : '🤖'}</span>
-      <span>{nameFor(side)} <em>{side === playerColor ? tc.name : level.elo}</em></span>
+    <div className="player-bar">
+      <span className="avatar">{side === playerColor ? '👤' : '🤖'}</span>
+      <span className="player-name">{nameFor(side)} <em>{side === playerColor ? tc.name : level.elo}</em></span>
       {tc.base != null && (
-        <span className={`v2-clock${clockRunning(side) ? ' v2-clock--active' : ''}${clocks[side] < 10000 ? ' v2-clock--low' : ''}`}>
+        <span className={`clock ${clockRunning(side) ? 'active' : ''} ${clocks[side] < 10000 ? 'low' : ''}`}>
           {fmtClock(clocks[side])}
         </span>
       )}
     </div>
   );
 
-  const evalPlain = (() => {
-    if (evalMate != null) return (evalMate > 0 ? playerColor === 'w' : playerColor === 'b') ? 'You can force checkmate!' : 'Engine threatens checkmate — be careful!';
-    const mine = playerColor === 'w' ? evalCp : -evalCp;
-    const a = Math.abs(mine);
-    if (a < 60) return 'Even game — keep to your plan.';
-    if (a < 180) return mine > 0 ? 'You have a small edge.' : 'Engine has a small edge.';
-    if (a < 400) return mine > 0 ? 'You are ahead — trade pieces!' : 'Engine is ahead — look for tricks!';
-    return mine > 0 ? 'You are winning!' : 'Engine is winning — don’t give up!';
-  })();
-  const youWon = !!result && /you win/i.test(result);
-
   return (
-    <LessonPage
-      progress={
-        <>
-          <SectionHeader title="Play the engine" sub={`${level.name} ${level.elo} • ${tc.name}`} action={engineStatus === 'ready' ? '⚡ Stockfish' : engineStatus === 'fallback' ? '🧠 Local engine' : '⏳ Loading engine…'} />
-          <Progress value={history.length} max={Math.max(history.length, 20)} label={`${history.length} moves played`} />
-        </>
-      }
-      coach={
-        <>
-          {result && <CelebrateSummary stars={youWon ? 3 : 1} xp={10} perfect={youWon && hintsUsed === 0} onNext={() => newGame(playerColorRef.current)} onRetry={startReview} />}
-          <CoachCallout text={`${statusText()} ${evalPlain}`} avatar={thinking ? '⏳' : '♞'} />
-          <Accordion
-            items={[
-              {
-                title: 'New game',
-                content: (
-                  <>
-                    <div className="v2-controlsrow">
-                      <Chip label="♔ Play White" active={playerColor === 'w'} onClick={() => newGame('w')} />
-                      <Chip label="♚ Play Black" active={playerColor === 'b'} onClick={() => newGame('b')} />
-                    </div>
-                    <span className="v2-fieldlabel">Time control</span>
-                    <div className="v2-controlsrow">
-                      {TIME_CONTROLS.map((t) => (
-                        <Chip key={t.id} label={t.name} active={t.id === tcId} onClick={() => newGame(playerColorRef.current, t)} />
-                      ))}
-                    </div>
-                    <span className="v2-fieldlabel">Engine strength</span>
-                    <div className="v2-controlsrow">
-                      {LEVELS.map((l) => (
-                        <Chip
-                          key={l.id}
-                          label={`${l.name} ${l.elo}`}
-                          active={l.id === levelId}
-                          onClick={() => { setLevelId(l.id); newGame(playerColorRef.current); }}
-                        />
-                      ))}
-                    </div>
-                    <p className="v2-progress__label">{level.desc} Promotions auto-queen. Drag or tap a piece, then tap its destination.</p>
-                  </>
-                ),
-              },
-              {
-                title: `Moves (${pairs.length})`,
-                content: (
-                  <div className="v2-moves">
-                    {pairs.length === 0 && <span>No moves yet.</span>}
-                    {pairs.map((p, pi) => (
-                      <div key={p.n} className="v2-moverow">
-                        <span className="v2-moven">{p.n}.</span>
-                        <button type="button" className={`v2-movecell ${reviewing && reviewPly === pi * 2 + 1 ? 'v2-movecell--current' : ''}`} onClick={reviewing ? () => setReviewPly(pi * 2 + 1) : undefined}>{p.w}</button>
-                        <button type="button" className={`v2-movecell ${reviewing && reviewPly === pi * 2 + 2 ? 'v2-movecell--current' : ''}`} onClick={reviewing && p.b ? () => setReviewPly(pi * 2 + 2) : undefined}>{p.b ?? ''}</button>
-                      </div>
-                    ))}
-                  </div>
-                ),
-              },
-            ]}
-          />
-        </>
-      }
-      board={
-        <div ref={wrapRef}>
-          {playerBar(topColor)}
-          <div className="v2-evalrow">
-            <div className="v2-evalbar" title="Engine evaluation">
-              <div className="v2-evalfill" style={{ height: `${100 - pct}%` }} />
-              <span className="v2-evlabel">
-                {evalMate != null ? `#${Math.abs(evalMate)}` : (evalCp >= 0 ? '+' : '') + (evalCp / 100).toFixed(1)}
-              </span>
-            </div>
-            <Board
-              fen={displayFen}
-              orientation={orientation}
-              arrows={arrows}
-              highlights={highlights}
-              canDragPiece={reviewing ? undefined : ({ square }) => {
-                if (result || thinking) return false;
-                const g = gameRef.current;
-                if (g.turn() !== playerColor) return false;
-                const piece = g.get(square);
-                return !!piece && piece.color === playerColor;
-              }}
-              onMove={reviewing ? undefined : handleMove}
-              getLegalTargets={(sq) => {
-                if (reviewing) return [];
-                try {
-                  return gameRef.current.moves({ square: sq, verbose: true }).map((m) => m.to);
-                } catch {
-                  return [];
-                }
-              }}
-            />
-          </div>
-          {playerBar(bottomColor)}
+    <div ref={wrapRef} className={`play-layout tb-flow tb-lesson ${isFullscreen ? 'is-fullscreen' : ''} ${reviewing ? 'is-reviewing' : ''}`}>
+      <div style={{ gridColumn: '1 / -1' }}>
+        <UxSectionHeader eyebrow="Practice" title="Play the engine" sub="Try your ideas in a real game — undo and hints are always here." meta={`${history.length} moves`} />
+      </div>
+      <div className="board-col tb-main tb-board tb-stick">
+        <div className="status-line">
+          <span className={`dot ${thinking ? 'thinking' : 'idle'}`} />
+          <strong>{statusText()}</strong>
+          <span className={`engine-badge ${engineStatus}`}>
+            {engineStatus === 'ready' ? '⚡ Stockfish' : engineStatus === 'fallback' ? '🧠 Local engine' : '⏳ Loading engine…'}
+          </span>
         </div>
-      }
-      hint={result ?? null}
-      controls={
-        <>
-          <div className="v2-controlsrow">
-            <Button level="tonal" label="↩ Undo" onClick={undo} disabled={history.length === 0 || thinking} />
-            <Button level="tonal" label="💡 Hint" onClick={hint} disabled={!!result || thinking || reviewing} />
-            <Button level="tonal" label="🔄 Flip" onClick={flipBoard} />
-            {!reviewing ? (
-              <Button level="tonal" label="🔍 Review" onClick={startReview} disabled={history.length === 0} />
-            ) : (
-              <Button label="▶ Live" onClick={() => setReviewing(false)} />
-            )}
-            <Button level="tonal" label={isFullscreen ? '⛶ Exit full' : '⛶ Full'} onClick={toggleFullscreen} />
-            <Button level="text" label="🏳 Resign" onClick={resign} disabled={!!result} />
+        {playerBar(topColor)}
+        <div className="eval-row">
+          <div className="eval-bar" title="Engine evaluation">
+            <div className="eval-fill" style={{ height: `${100 - pct}%` }} />
+            <span className="eval-label">
+              {evalMate != null ? `#${Math.abs(evalMate)}` : (evalCp >= 0 ? '+' : '') + (evalCp / 100).toFixed(1)}
+            </span>
           </div>
-          {reviewing && (
-            <div className="v2-controlsrow">
-              <Button level="tonal" label="⏮ Start" onClick={() => setReviewPly(0)} />
-              <Button level="tonal" label="← Prev" onClick={() => setReviewPly((p) => Math.max(0, p - 1))} />
-              <Button level="tonal" label="Next →" onClick={() => setReviewPly((p) => Math.min(verboseHist.length, p + 1))} />
-              <Button level="tonal" label="End ⏭" onClick={() => setReviewPly(verboseHist.length)} />
-              <Button level="text" label="✕ Exit review" onClick={() => setReviewing(false)} />
-            </div>
+          <Board
+            fen={displayFen}
+            orientation={orientation}
+            arrows={arrows}
+            highlights={highlights}
+            canDragPiece={reviewing ? undefined : ({ square }) => {
+              if (result || thinking) return false;
+              const g = gameRef.current;
+              if (g.turn() !== playerColor) return false;
+              const piece = g.get(square);
+              return !!piece && piece.color === playerColor;
+            }}
+            onMove={reviewing ? undefined : handleMove}
+            getLegalTargets={(sq) => {
+              if (reviewing) return [];
+              try {
+                return gameRef.current.moves({ square: sq, verbose: true }).map((m) => m.to);
+              } catch {
+                return [];
+              }
+            }}
+          />
+        </div>
+        {playerBar(bottomColor)}
+        <div className="quick-actions">
+          <button className="btn" title="Undo move" aria-label="Undo move" onClick={undo} disabled={history.length === 0 || thinking}>↩ Undo</button>
+          <button className="btn" title="Hint" aria-label="Hint" onClick={hint} disabled={!!result || thinking || reviewing}>💡 Hint</button>
+          <button className="btn" title="Flip board" aria-label="Flip board" onClick={flipBoard}>🔄 Flip</button>
+          {!reviewing ? (
+            <button className="btn" title="Review game" aria-label="Review game" onClick={startReview} disabled={history.length === 0}>🔍 Review</button>
+          ) : (
+            <button className="btn primary" title="Back to live game" aria-label="Back to live game" onClick={() => setReviewing(false)}>▶ Live</button>
           )}
-          {hintsUsed > 0 && <span className="v2-stepcount">• {hintsUsed} hint{hintsUsed > 1 ? 's' : ''}</span>}
-        </>
-      }
-      list={null}
-    />
+          <button className="btn" title={isFullscreen ? 'Exit fullscreen' : 'Fullscreen'} aria-label={isFullscreen ? 'Exit fullscreen' : 'Fullscreen'} onClick={toggleFullscreen}>⛶ Full</button>
+        </div>
+        <span className="cm-controls-note" role="status">
+          {(() => {
+            if (evalMate != null) return (evalMate > 0 ? playerColor === 'w' : playerColor === 'b') ? 'You can force checkmate!' : 'Engine threatens checkmate — be careful!';
+            const mine = playerColor === 'w' ? evalCp : -evalCp;
+            const a = Math.abs(mine);
+            if (a < 60) return 'Even game — keep to your plan.';
+            if (a < 180) return mine > 0 ? 'You have a small edge.' : 'Engine has a small edge.';
+            if (a < 400) return mine > 0 ? 'You are ahead — trade pieces!' : 'Engine is ahead — look for tricks!';
+            return mine > 0 ? 'You are winning!' : 'Engine is winning — don’t give up!';
+          })()}
+        </span>
+        {reviewing && (
+          <div className="step-controls">
+            <button className="btn" onClick={() => setReviewPly(0)}>⏮ Start</button>
+            <button className="btn" onClick={() => setReviewPly((p) => Math.max(0, p - 1))}>← Prev</button>
+            <span className="step-count">Move {reviewPly} / {verboseHist.length}</span>
+            <button className="btn" onClick={() => setReviewPly((p) => Math.min(verboseHist.length, p + 1))}>Next →</button>
+            <button className="btn" onClick={() => setReviewPly(verboseHist.length)}>End ⏭</button>
+            <button className="btn primary" onClick={() => setReviewing(false)}>✕ Exit review</button>
+          </div>
+        )}
+        {isFullscreen && (
+          <div className="fs-moves">
+            <div className="fs-moves-list" ref={fsMovesRef}>
+              {pairs.length === 0 && <span className="muted small">No moves yet — make the first move.</span>}
+              {pairs.map((p, pi) => (
+                <span key={p.n} className="fs-move">
+                  <span className="move-n">{p.n}.</span>
+                  <span
+                    className={`move-cell ${reviewing && reviewPly === pi * 2 + 1 ? 'current' : ''}`}
+                    onClick={() => reviewAt(pi * 2 + 1)}
+                  >{p.w}</span>
+                  {p.b && (
+                    <span
+                      className={`move-cell ${reviewing && reviewPly === pi * 2 + 2 ? 'current' : ''}`}
+                      onClick={() => reviewAt(pi * 2 + 2)}
+                    >{p.b}</span>
+                  )}
+                </span>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+
+      <div className="side-col tb-aside tb-coachacc">
+        <TbCoachAcc>
+          <TbCoachAccItem title="New game">
+        <div className="card">
+          <h3>New game</h3>
+          <div className="btn-row">
+            <button className={`btn ${playerColor === 'w' ? 'primary' : ''}`} onClick={() => newGame('w')}>♔ Play White</button>
+            <button className={`btn ${playerColor === 'b' ? 'primary' : ''}`} onClick={() => newGame('b')}>♚ Play Black</button>
+          </div>
+          <label className="field-label">Time control</label>
+          <div className="tc-groups">
+            {['No clock', 'Bullet', 'Blitz', 'Rapid'].map((cat) => (
+              <div key={cat} className="tc-row">
+                <span className="tc-cat">{cat}</span>
+                <div className="tc-chips">
+                  {TIME_CONTROLS.filter((t) => t.cat === cat).map((t) => (
+                    <button
+                      key={t.id}
+                      className={`chip ${t.id === tcId ? 'active' : ''}`}
+                      onClick={() => newGame(playerColorRef.current, t)}
+                    >
+                      {t.name}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+          <label className="field-label">Engine strength</label>
+          <div className="level-list">
+            {LEVELS.map((l) => (
+              <button
+                key={l.id}
+                className={`level ${l.id === levelId ? 'active' : ''}`}
+                onClick={() => {
+                  setLevelId(l.id);
+                  newGame(playerColorRef.current);
+                }}
+              >
+                <span className="level-name">{l.name} <em>{l.elo}</em></span>
+                <span className="level-desc">{l.desc}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+          </TbCoachAccItem>
+          <TbCoachAccItem title="Moves">
+        <div className="card">
+          <h3>Moves {hintsUsed > 0 && <span className="muted">• {hintsUsed} hint{hintsUsed > 1 ? 's' : ''}</span>}</h3>
+          <div className={`moves ${reviewing ? 'review-clickable' : ''}`}>
+            {pairs.length === 0 && <span className="muted">No moves yet.</span>}
+            {pairs.map((p, pi) => (
+              <div key={p.n} className="move-row">
+                <span className="move-n">{p.n}.</span>
+                <span
+                  className={`move-cell ${reviewing && reviewPly === pi * 2 + 1 ? 'current' : ''}`}
+                  onClick={reviewing ? () => setReviewPly(pi * 2 + 1) : undefined}
+                >{p.w}</span>
+                <span
+                  className={`move-cell ${reviewing && reviewPly === pi * 2 + 2 ? 'current' : ''}`}
+                  onClick={reviewing && p.b ? () => setReviewPly(pi * 2 + 2) : undefined}
+                >{p.b ?? ''}</span>
+              </div>
+            ))}
+          </div>
+          <div className="btn-row wrap">
+            <button className="btn" onClick={undo} disabled={history.length === 0 || thinking}>↩ Undo</button>
+            <button className="btn" onClick={hint} disabled={!!result || thinking || reviewing}>💡 Hint</button>
+            <button className="btn" onClick={flipBoard}>🔄 Flip</button>
+            <button className="btn" onClick={toggleFullscreen}>{isFullscreen ? '⛶ Exit full' : '⛶ Fullscreen'}</button>
+          </div>
+          <div className="btn-row wrap">
+            {!reviewing ? (
+              <button className="btn" onClick={startReview} disabled={history.length === 0}>🔍 Review game</button>
+            ) : (
+              <button className="btn primary" onClick={() => setReviewing(false)}>▶ Back to live game</button>
+            )}
+            <button className="btn danger" onClick={resign} disabled={!!result}>🏳 Resign</button>
+          </div>
+          <p className="muted small">Promotions auto-queen. Drag or tap a piece, then tap its destination.</p>
+        </div>
+          </TbCoachAccItem>
+        </TbCoachAcc>
+      </div>
+      <TbActionBar actions={[{ id: 'hint', label: 'Hint', onClick: hint }, { id: 'new', label: 'New Game', onClick: () => newGame(playerColorRef.current), primary: true }, { id: 'flip', label: 'Flip', onClick: flipBoard }]} />
+    </div>
   );
 }
-

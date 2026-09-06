@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Chess } from 'chess.js';
 import Board from './Board.jsx';
-import { Button, SectionHeader, Progress, CoachCallout, Chip, SearchField, Accordion } from '../v2/ui/Kit.jsx';
-import { LessonPage, UpNextDrawer, CelebrateSummary } from '../v2/lesson/LessonPage.jsx';
+import { TbCoachAcc, TbCoachAccItem } from './TbCoachAcc.jsx';
+import { TbActionBar } from './TbActionBar.jsx';
+import { UxSectionHeader } from '../ux-section/UxSection.jsx';
 import { PUZZLES, puzzleRatingColor } from '../data/puzzles.js';
 import { LICHESS_PUZZLES } from '../data/puzzlesLichess.js';
 import { toPlain } from '../data/cmPlainWords.js';
@@ -234,53 +235,13 @@ export default function PuzzleTrainer() {
   };
 
   const progress = Math.min(100, (ply / puzzle.solution.length) * 100);
-  const [drawerOpen, setDrawerOpen] = useState(false);
 
   return (
-    <LessonPage
-      progress={
-        <>
-          <SectionHeader title={puzzle.title} sub={`${puzzle.theme} • ★${puzzle.rating} • ${puzzle.side === 'w' ? 'White to move' : 'Black to move'}`} action={`${solvedCount}/${ALL.length} solved`} />
-          <Progress value={ply} max={puzzle.solution.length} label={`Move ${ply} of ${puzzle.solution.length}`} />
-        </>
-      }
-      coach={
-        <>
-          {solved && <CelebrateSummary stars={mistakes === 0 ? 3 : 2} xp={10} perfect={mistakes === 0} onNext={() => gotoPos(pos + 1)} onRetry={() => loadByIndex(index)} />}
-          <CoachCallout text={message} avatar="🧩" />
-          <div className="v2-puzzlehead">
-            <div className="v2-streakbox">
-              <span className="v2-streaknum">{solvedCount}/{ALL.length}</span>
-              <span className="v2-progress__label">solved</span>
-              <span className="v2-streaknum">~{rating}</span>
-              <span className="v2-progress__label">puzzle rating</span>
-            </div>
-          </div>
-          <Accordion
-            items={[
-              ...(solved ? [{ title: '✅ Why it works', content: <p>{puzzle.explanation}</p> }] : [{ title: '💭 Coach tip', content: <p>{puzzle.hint}</p> }]),
-              {
-                title: 'Moves',
-                content: (
-                  <div className="v2-moves">
-                    {history.length === 0 && <span>Make the first move.</span>}
-                    {history.map((s, i) => (
-                      <span key={i} className="v2-moverow">
-                        <span className="v2-moven">{Math.floor(i / 2) + 1}.{i % 2 === 0 ? '' : '…'}</span>
-                        <span className="v2-movecell">{s}</span>
-                      </span>
-                    ))}
-                  </div>
-                ),
-              },
-            ]}
-          />
-          {puzzle.solution.length > 1 && (
-            <p className="v2-progress__label">A longer combination — your moves: {Math.ceil(puzzle.solution.length / 2)}, opponent replies play automatically.</p>
-          )}
-        </>
-      }
-      board={
+    <div className="play-layout tb-flow tb-lesson">
+      <div style={{ gridColumn: '1 / -1' }}>
+        <UxSectionHeader eyebrow="Solve" title="Puzzles" sub="Find the winning move — tap Hint anytime, retry as often as you like." meta={`${solvedCount}/${ALL.length} solved`} />
+      </div>
+      <div className="board-col tb-main tb-board tb-stick">
         <Board
           fen={fen}
           orientation={puzzle.side === 'w' ? 'white' : 'black'}
@@ -294,43 +255,118 @@ export default function PuzzleTrainer() {
           onMove={handleMove}
           getLegalTargets={(sq) => gameRef.current.moves({ square: sq, verbose: true }).map((m) => m.to)}
         />
-      }
-      hint={`Mistakes: ${mistakes}`}
-      controls={
-        <>
-          <div className="v2-controlsrow">
-            <Button level="tonal" label="💡 Hint" onClick={showHint} disabled={solved} />
-            <Button level="tonal" label="↺ Retry" onClick={() => loadByIndex(index)} />
-            <Button level="tonal" label="👁 Solution" onClick={showSolution} disabled={solved} />
-            <Button label="Next puzzle →" onClick={() => gotoPos(pos + 1)} />
-            <Button level="text" label="☰ Puzzles" onClick={() => setDrawerOpen(true)} />
+        <div className="status-line">
+          <strong>{message}</strong>
+          <span className="muted">Mistakes: {mistakes}</span>
+        </div>
+        <div className="progress-track">
+          <div className="progress-fill" style={{ width: `${progress}%` }} />
+        </div>
+        <div className="puzzle-quickbar">
+          <button className="btn" onClick={() => loadByIndex(index)}>↺ Retry</button>
+          <button className="btn primary" onClick={() => gotoPos(pos + 1)}>Next puzzle →</button>
+        </div>
+      </div>
+
+      <div className="side-col tb-aside tb-coachacc">
+        <TbCoachAcc>
+          <TbCoachAccItem title="Puzzle">
+        <div className="card puzzle-head">
+          <div>
+            <h3>{puzzle.title}</h3>
+            <div className="puzzle-meta">
+              <span className="pill" style={{ borderColor: puzzleRatingColor(puzzle.rating) }}>{puzzle.theme}</span>
+              <span className="pill">★ {puzzle.rating}</span>
+              <span className="pill">{puzzle.side === 'w' ? 'White to move' : 'Black to move'}</span>
+            </div>
           </div>
-          <div className="v2-controlsrow">
-            {BANDS.map((b) => (
-              <Chip key={b.id} label={b.label} active={band === b.id} onClick={() => applyBand(b.id)} />
+          <div className="streak-box">
+            <span className="streak-num">{solvedCount}/{ALL.length}</span>
+            <span className="muted small">solved</span>
+            <span className="streak-num">~{rating}</span>
+            <span className="muted small">puzzle rating</span>
+          </div>
+        </div>
+          </TbCoachAccItem>
+
+        {puzzle.solution.length > 1 && (
+          <TbCoachAccItem title="Note">
+          <p className="muted small">A longer combination — your moves: {Math.ceil(puzzle.solution.length / 2)}, opponent replies play automatically.</p>
+          </TbCoachAccItem>
+        )}
+
+          <TbCoachAccItem title="Moves">
+        <div className="card">
+          <h3>Moves</h3>
+          <div className="moves">
+            {history.length === 0 && <span className="muted">Make the first move.</span>}
+            {history.map((s, i) => (
+              <span key={i} className="move-chip">
+                {Math.floor(i / 2) + 1}.{i % 2 === 0 ? '' : '…'} {s}
+              </span>
             ))}
-            <Chip label="🔀 Shuffle" active={false} onClick={() => applyBand(band, true)} />
           </div>
-        </>
-      }
-      list={
-        <>
-          <SectionHeader title="Puzzles" sub="Pick any puzzle to jump to it." action={`${queue.length} in view`} />
-          <UpNextDrawer
-            open={drawerOpen}
-            items={queue.map((qi, qi2) => {
+          <div className="btn-row wrap">
+            <button className="btn" onClick={showHint} disabled={solved}>💡 Hint</button>
+            <button className="btn" onClick={() => loadByIndex(index)}>↺ Retry</button>
+            <button className="btn" onClick={showSolution} disabled={solved}>👁 Solution</button>
+          </div>
+        </div>
+          </TbCoachAccItem>
+
+        {solved && (
+          <TbCoachAccItem title="Why it works">
+          <div className="card coach">
+            <h3>✅ Why it works</h3>
+            <p>{puzzle.explanation}</p>
+            <div className="btn-row">
+              <button className="btn primary" onClick={() => gotoPos(pos + 1)}>Next puzzle →</button>
+            </div>
+          </div>
+          </TbCoachAccItem>
+        )}
+
+        {!solved && (
+          <TbCoachAccItem title="Coach tip">
+          <div className="card coach">
+            <h3>💭 Coach tip</h3>
+            <p>{puzzle.hint}</p>
+          </div>
+          </TbCoachAccItem>
+        )}
+
+          <TbCoachAccItem title="Puzzles">
+        <div className="card">
+          <h3>Puzzles <span className="muted small">{queue.length} in view</span></h3>
+          <div className="btn-row wrap era-row">
+            {BANDS.map((b) => (
+              <button key={b.id} className={`btn small-btn ${band === b.id ? 'primary' : ''}`} onClick={() => applyBand(b.id)}>
+                {b.label}
+              </button>
+            ))}
+            <button className="btn small-btn" onClick={() => applyBand(band, true)}>🔀 Shuffle</button>
+          </div>
+          <div className="puzzle-list">
+            {queue.map((qi, qi2) => {
               const p = ALL[qi];
-              return { id: p.id, title: `${stats[p.id]?.solved ? '✓ ' : `${qi2 + 1}. `}${p.title}`, done: !!stats[p.id]?.solved };
+              return (
+                <button key={p.id} className={`puzzle-item ${qi === index ? 'active' : ''}`} onClick={() => { setPos(qi2); loadByIndex(qi); }}>
+                  <span className="puzzle-check">{stats[p.id]?.solved ? '✅' : `${qi2 + 1}.`}</span>
+                  <span className="puzzle-name">{p.title}</span>
+                  <span className="pill small" style={{ borderColor: puzzleRatingColor(p.rating) }}>{p.rating}</span>
+                </button>
+              );
             })}
-            onSelect={(id) => {
-              const qi2 = queue.findIndex((qi) => ALL[qi].id === id);
-              if (qi2 >= 0) { setPos(qi2); loadByIndex(queue[qi2]); }
-              setDrawerOpen(false);
-            }}
-            onClose={() => setDrawerOpen(false)}
-          />
-        </>
-      }
-    />
+          </div>
+          <div className="btn-row">
+            <button className="btn" onClick={() => gotoPos(pos - 1)}>← Prev</button>
+            <button className="btn" onClick={() => gotoPos(pos + 1)}>Next →</button>
+          </div>
+        </div>
+          </TbCoachAccItem>
+        </TbCoachAcc>
+      </div>
+      <TbActionBar actions={[{ id: 'hint', label: 'Hint', onClick: showHint }, { id: 'next', label: 'Next', onClick: () => gotoPos(pos + 1), primary: true }, { id: 'retry', label: 'Retry', onClick: () => loadByIndex(index) }]} />
+    </div>
   );
 }

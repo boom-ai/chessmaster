@@ -5,21 +5,33 @@ import OpeningsTeacher from './components/OpeningsTeacher.jsx';
 import StrategyCoach from './components/StrategyCoach.jsx';
 import FamousGames from './components/FamousGames.jsx';
 import Guide from './components/Guide.jsx';
-import { AppShell, FirstRunWelcome } from './v2/shell/AppShell.jsx';
-import { TABS } from './v2/shell/tabs.js';
-import { ThemeToggle } from './v2/shell/ThemeToggle.jsx';
-import { Button, Card, SectionHeader, Progress, Chip, Stars } from './v2/ui/Kit.jsx';
+import { CmStartHere } from './components/CmStartHere.jsx';
+import { CmNextStep } from './components/CmNextStep.jsx';
+import { CmDisplaySettings } from './components/CmDisplaySettings.jsx';
+import UxThemeToggle from './ux-theme/UxThemeToggle.jsx';
+import { UxSectionHeader } from './ux-section/UxSection.jsx';
 import { CM_PATH } from './data/cmPathData.js';
 import { useCmDisplayMode } from './hooks/cmDisplayMode.js';
-import { CM_AUTOPLAY_MS } from './hooks/cmDisplayMode.js';
-import { getCompletedIds } from './utils/cmProgressStore.js';
-import { speakText, supportsTTS } from './utils/cmSpeech.js';
 import { getInitialTheme, resolveTheme, THEME_KEY } from './ux-theme/uxThemeInit.js';
+import { getCompletedIds } from './utils/cmProgressStore.js';
+import { speakText } from './utils/cmSpeech.js';
+import './App.css';
+
+const TABS = [
+  { id: 'start', label: '🏠 Start Here', desc: 'Your 9-step learning path' },
+  { id: 'play', label: '♞ Play Engine', desc: 'Practice games vs the computer' },
+  { id: 'puzzles', label: '🧩 Puzzles', desc: '510 mates & tactics' },
+  { id: 'learn', label: '🎓 Openings Coach', desc: '100 repertoires with arrows' },
+  { id: 'middlegame', label: '⚔️ Middlegame', desc: '100 plans, traps & tactics' },
+  { id: 'endgame', label: '♔ Endgame', desc: '100 techniques with drills' },
+  { id: 'games', label: '🏛 Famous Games', desc: '100 classics, every move explained' },
+  { id: 'guide', label: '📚 Guide', desc: 'Notation, pieces & rules' },
+];
 
 const PATH_TO_TAB = {
   Guide: 'guide',
   Puzzles: 'puzzles',
-  Openings: 'openings',
+  Openings: 'learn',
   Endgame: 'endgame',
   Middlegame: 'middlegame',
   FamousGames: 'games',
@@ -34,6 +46,7 @@ function readJson(key) {
   }
 }
 
+// Steps completed via real activity in each section + earned stars.
 function computeCompletedIds() {
   const ids = new Set(getCompletedIds());
   const op = readJson('chessmaster-openings');
@@ -52,113 +65,141 @@ function computeCompletedIds() {
   return [...ids];
 }
 
-function nextStep(completedIds) {
-  return CM_PATH.find((s) => !completedIds.includes(s.id)) ?? CM_PATH[CM_PATH.length - 1];
-}
-
 export default function App() {
   const [tab, setTab] = useState('start');
-  const [theme, setTheme] = useState(() => getInitialTheme());
-  const [welcomed, setWelcomed] = useState(() => {
-    try {
-      return window.localStorage.getItem('cm-first-run-v1') === 'done';
-    } catch {
-      return true;
-    }
-  });
+  const [menuOpen, setMenuOpen] = useState(false);
   const dm = useCmDisplayMode();
+
+  // Manual theme (light/dark/system) wins over OS; applied to <html>.
+  useEffect(() => {
+    const apply = () => {
+      try {
+        const stored = window.localStorage.getItem(THEME_KEY);
+        const mode = stored === 'light' || stored === 'dark' || stored === 'system' ? stored : getInitialTheme();
+        document.documentElement.dataset.theme = resolveTheme(mode);
+      } catch {
+        /* ignore */
+      }
+    };
+    apply();
+    window.addEventListener('cm-theme-change', apply);
+    window.addEventListener('storage', apply);
+    return () => {
+      window.removeEventListener('cm-theme-change', apply);
+      window.removeEventListener('storage', apply);
+    };
+  }, []);
 
   const go = (id) => {
     setTab(id);
+    setMenuOpen(false);
     window.scrollTo(0, 0);
   };
 
+  const completedIds = useMemo(computeCompletedIds, [tab]);
+
   useEffect(() => {
-    try {
-      document.documentElement.dataset.theme = resolveTheme(theme);
-      window.localStorage.setItem(THEME_KEY, theme);
-    } catch {
-      /* ignore */
-    }
-  }, [theme]);
+    if (!menuOpen) return;
+    document.body.style.overflow = 'hidden';
+    const onKey = (e) => {
+      if (e.key === 'Escape') setMenuOpen(false);
+    };
+    window.addEventListener('keydown', onKey);
+    return () => {
+      document.body.style.overflow = '';
+      window.removeEventListener('keydown', onKey);
+    };
+  }, [menuOpen]);
 
-  const markWelcomed = () => {
-    try {
-      window.localStorage.setItem('cm-first-run-v1', 'done');
-    } catch {
-      /* ignore */
-    }
-    setWelcomed(true);
-  };
-
-  const completedIds = useMemo(computeCompletedIds, [tab, dm.mode]);
-  const upcoming = nextStep(completedIds);
-  const ageClass = dm.mode === 'standard' ? '' : `v2-age-${dm.mode}`;
+  const modeClass = dm.mode === 'standard' ? '' : `cm-type-${dm.mode}`;
 
   return (
-    <div className={ageClass}>
-      <AppShell
-        tabs={TABS}
-        activeId={tab === 'openings' ? 'openings' : tab}
-        onNavigate={(id) => go(id)}
-        themeToggle={<ThemeToggle theme={theme} onToggle={(next) => setTheme(next)} />}
-      >
-        {!welcomed ? (
-          <FirstRunWelcome
-            onStart={() => { markWelcomed(); go('start'); }}
-            onGuidedTour={() => { markWelcomed(); go('start'); }}
-          />
-        ) : tab === 'start' ? (
-          <div className="v2-container v2-stack">
-            <SectionHeader
-              title="Welcome! Start here"
-              sub="Nine small steps take you from your first piece to your first win."
-              action={`${completedIds.length} of ${CM_PATH.length} done`}
-            />
-            <Progress value={completedIds.length} max={CM_PATH.length} label={`${completedIds.length} of ${CM_PATH.length} steps`} />
-            <Card
-              title={`Next: ${upcoming.titlePlain}`}
-              sub={upcoming.oneLine}
-              meta="Continue"
-              onClick={() => go(PATH_TO_TAB[upcoming.targetTab] ?? 'guide')}
-            />
-            <div className="v2-cluster">
-              {CM_PATH.map((s, i) => (
-                <Card
-                  key={s.id}
-                  title={`${i + 1}. ${s.titlePlain}${completedIds.includes(s.id) ? ' ✓' : ''}`}
-                  sub={s.oneLine}
-                  meta={s.action}
-                  onClick={() => go(PATH_TO_TAB[s.targetTab] ?? 'guide')}
-                />
-              ))}
-            </div>
-            <SectionHeader title="Make it comfortable" sub="Bigger text, slower moves, or read-aloud — pick what suits you." />
-            <div className="v2-cluster">
-              {['kid', 'standard', 'senior'].map((m) => (
-                <Chip key={m} label={m === 'kid' ? '🧒 Kid' : m === 'senior' ? '👴 Senior' : 'Standard'} active={dm.mode === m} onClick={() => dm.setMode(m)} />
-              ))}
-            </div>
-            <p className="v2-progress__label">
-              {dm.mode === 'senior' ? 'Senior: bigger text, slower moves.' : dm.mode === 'kid' ? 'Kid: roomy text, quicker pace.' : 'Standard pace.'} Watch speed: {Math.round((CM_AUTOPLAY_MS[dm.mode] ?? 3000) / 1000)}s per move.
-            </p>
-            {supportsTTS() && (
-              <Button level="tonal" label="🔊 Hear welcome" onClick={() => speakText('Welcome to ChessMaster. Start with step one.')} />
-            )}
-            <p className="v2-progress__label"><Stars earned={Math.min(completedIds.length, 3)} total={3} /> Keep going — stars grow as you finish steps.</p>
+    <div className={`app ${modeClass}`}>
+      <header className="topbar">
+        <div className="brand">
+          <span className="brand-icon">♞</span>
+          <div>
+            <h1>ChessMaster</h1>
+            <p>Learn chess step by step • Ages 10 to 80+</p>
           </div>
-        ) : (
-          <>
-            {tab === 'play' && <PlayVsEngine />}
-            {tab === 'puzzles' && <PuzzleTrainer />}
-            {tab === 'openings' && <OpeningsTeacher />}
-            {tab === 'middlegame' && <StrategyCoach key="middlegame" phase="middlegame" />}
-            {tab === 'endgame' && <StrategyCoach key="endgame" phase="endgame" />}
-            {tab === 'games' && <FamousGames />}
-            {tab === 'guide' && <Guide />}
-          </>
+        </div>
+        <button
+          className="menu-btn"
+          aria-label={menuOpen ? 'Close menu' : 'Open menu'}
+          aria-expanded={menuOpen}
+          onClick={() => setMenuOpen((o) => !o)}
+        >
+          {menuOpen ? '✕' : '☰'}
+        </button>
+        <nav className="tabs">
+          {TABS.map((t) => (
+            <button key={t.id} className={`tab ${tab === t.id ? 'active' : ''}`} onClick={() => go(t.id)} title={t.desc}>
+              {t.label}
+            </button>
+          ))}
+        </nav>
+        <UxThemeToggle className="topbar-theme" />
+      </header>
+      <div
+        className={`drawer-backdrop ${menuOpen ? 'open' : ''}`}
+        onClick={() => setMenuOpen(false)}
+        aria-hidden={!menuOpen}
+      />
+      <nav className={`drawer ${menuOpen ? 'open' : ''}`} aria-label="Sections">
+        <div className="drawer-head">
+          <span className="brand-icon small">♞</span>
+          <strong>ChessMaster</strong>
+        </div>
+        {TABS.map((t) => (
+          <button key={t.id} className={`drawer-item ${tab === t.id ? 'active' : ''}`} onClick={() => go(t.id)}>
+            <span className="drawer-label">{t.label}</span>
+            <span className="drawer-desc">{t.desc}</span>
+          </button>
+        ))}
+        <p className="muted small drawer-foot">Engine runs offline in your browser.</p>
+      </nav>
+      <main className="main">
+        {tab === 'start' && (
+          <div className="side-col" style={{ maxWidth: 860, marginInline: 'auto' }}>
+            <UxSectionHeader
+              eyebrow="Start here"
+              title="Welcome! Start here"
+              sub="Nine small steps take you from your first piece to your first win. Do them in order."
+              meta={`${completedIds.length} of ${CM_PATH.length} done`}
+            />
+            <CmStartHere
+              steps={CM_PATH}
+              completedIds={completedIds}
+              onChoose={(target) => go(PATH_TO_TAB[target] ?? 'guide')}
+            />
+            <CmNextStep
+              completedIds={completedIds}
+              onGo={(stepId) => {
+                const step = CM_PATH.find((s) => s.id === stepId);
+                go(step ? (PATH_TO_TAB[step.targetTab] ?? 'guide') : 'guide');
+              }}
+            />
+            <div className="card">
+              <h3>Make it comfortable</h3>
+              <CmDisplaySettings
+                value={{ mode: dm.mode }}
+                onChange={dm.setMode}
+                onSpeak={() => speakText('Welcome to ChessMaster. Start with step one.')}
+              />
+            </div>
+          </div>
         )}
-      </AppShell>
+        {tab === 'play' && <PlayVsEngine />}
+        {tab === 'puzzles' && <PuzzleTrainer />}
+        {tab === 'learn' && <OpeningsTeacher />}
+        {tab === 'middlegame' && <StrategyCoach key="middlegame" phase="middlegame" />}
+        {tab === 'endgame' && <StrategyCoach key="endgame" phase="endgame" />}
+        {tab === 'games' && <FamousGames />}
+        {tab === 'guide' && <Guide />}
+      </main>
+      <footer className="footer">
+        <span>Engine: Stockfish 10 (WASM, runs fully offline in your browser) with a built-in fallback • Positions & lines verified with chess.js</span>
+      </footer>
     </div>
   );
 }

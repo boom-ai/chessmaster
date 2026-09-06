@@ -1,8 +1,9 @@
 import { useRef, useState } from 'react';
 import { Chess } from 'chess.js';
 import Board from './Board.jsx';
-import { Button, SectionHeader, Progress, CoachCallout, Chip, SearchField, Accordion } from '../v2/ui/Kit.jsx';
-import { LessonPage, UpNextDrawer, CelebrateSummary } from '../v2/lesson/LessonPage.jsx';
+import { TbCoachAcc, TbCoachAccItem } from './TbCoachAcc.jsx';
+import { TbActionBar } from './TbActionBar.jsx';
+import { UxSectionHeader } from '../ux-section/UxSection.jsx';
 import { PIECE_PUZZLES } from '../data/puzzlesByPiece.js';
 
 const PIECES = [
@@ -282,120 +283,166 @@ export default function Guide() {
     }
   };
 
-  const [drawerOpen, setDrawerOpen] = useState(false);
-
-  const statusText = section === 'pieces'
-    ? (ppuzzle
-      ? `${ppuzzle.title} ★${ppuzzle.rating} — ${pmsg || 'Find the move!'}`
-      : challenge
-        ? (challengeWon
-          ? `Challenge complete — all ${totalTargets} captured!`
-          : !hasDemoPiece
-            ? 'Promoted! That ends the run — reset to retry the challenge.'
-            : `Capture all black pieces with the ${demo.name.toLowerCase()}: ${remaining} left!`)
-        : `Drag the ${demo.name.toLowerCase()} — dots show where it can go.`)
-    : 'Files a–h, ranks 1–8. Every square has a name like e4.';
-
   return (
-    <LessonPage
-      progress={
-        <>
-          <SectionHeader title="Guide" sub="Pieces, rules and notation — look anything up." action={section === 'pieces' ? 'Piece school' : 'Notation'} />
-          <Progress value={section === 'pieces' ? 1 : 0} max={2} label={section === 'pieces' ? 'Step 2 of 2' : 'Step 1 of 2'} />
-        </>
-      }
-      coach={
-        <>
-          {section === 'pieces' && challenge && challengeWon && (
-            <CelebrateSummary stars={3} xp={10} perfect onNext={nextPiece} onRetry={() => { setFenBoth(demo.fen); setDemoMoves(0); }} />
-          )}
-          <CoachCallout text={section === 'pieces' ? demo.how : 'Learn to read moves once, and all 8,500+ annotated moves in the app become lessons.'} avatar={section === 'pieces' ? demo.glyph : '📝'} />
-          <Accordion
-            items={
-              section === 'pieces'
-                ? [
-                  { title: '🧠 If-scenarios to remember', content: (<ul className="v2-ideas">{demo.scenarios.map((s, i) => <li key={i}>{s}</li>)}</ul>) },
-                  ...(ppuzzle ? [{ title: '💭 Hint', content: <p>{ppuzzle.hint}</p> }] : []),
-                ]
-                : [
-                  { title: '♞ Piece letters', content: <p>K king · Q queen · R rook · B bishop · <strong>N knight</strong> (K is taken!) · pawns get no letter.</p> },
-                  { title: '✍️ Writing moves', content: <p>Piece + square: <strong>Nf3</strong>. Pawns just name the square: <strong>e4</strong>. Number White’s move and Black’s reply together: <strong>1. e4 e5</strong>.</p> },
-                  { title: '⚡ Symbols', content: (<ul className="v2-ideas">{SYMBOLS.map(([s, d]) => <li key={s}><strong>{s}</strong> — {d}</li>)}</ul>) },
-                  { title: '📊 Reading this app', content: <p>Green is your move, red the opponent, yellow a key square, blue a hint. +1.5 means White is up ~1½ pawns; #3 means mate in 3.</p> },
-                ]
-            }
-          />
-        </>
-      }
-      board={
-        section === 'pieces' ? (
-          <Board
-            fen={demoFen}
-            orientation="white"
-            canDragPiece={canDragDemo}
-            onMove={ppuzzle ? tryPuzzleMove : tryDemoMove}
-            getLegalTargets={legalFrom}
-          />
-        ) : (
-          <Board
-            fen={new Chess().fen()}
-            orientation="white"
-            getLegalTargets={() => []}
-          />
-        )
-      }
-      hint={section === 'pieces' ? `Moves tried: ${demoMoves}` : null}
-      controls={
-        <>
-          <div className="v2-controlsrow">
-            <Chip label="📝 Notation guide" active={section === 'notation'} onClick={() => setSection('notation')} />
-            <Chip label="♟ Piece school" active={section === 'pieces'} onClick={() => setSection('pieces')} />
+    <div className="play-layout tb-flow tb-lesson">
+      <div style={{ gridColumn: '1 / -1' }}>
+        <UxSectionHeader eyebrow="Reference" title="Guide" sub="Pieces, rules and notation — look anything up." />
+      </div>
+      <div className="board-col tb-main tb-board tb-stick">
+        <div className="btn-row wrap" style={{ marginTop: 0 }}>
+          <button className={`btn ${section === 'notation' ? 'primary' : ''}`} onClick={() => setSection('notation')}>📝 Notation guide</button>
+          <button className={`btn ${section === 'pieces' ? 'primary' : ''}`} onClick={() => setSection('pieces')}>♟ Piece school</button>
+        </div>
+
+        {section === 'pieces' && (
+          <>
+            <div className="piece-picker">
+              {PIECES.map((p) => (
+                <button key={p.id} className={`piece-btn ${p.id === pieceId ? 'active' : ''}`} onClick={() => pickPiece(p.id)}>
+                  <span className="piece-glyph">{p.glyph}</span>
+                  <span className="small">{p.name}</span>
+                </button>
+              ))}
+            </div>
+            <Board
+              fen={demoFen}
+              orientation="white"
+              canDragPiece={canDragDemo}
+              onMove={ppuzzle ? tryPuzzleMove : tryDemoMove}
+              getLegalTargets={legalFrom}
+            />
+            <div className="status-line">
+              <strong>
+                {ppuzzle
+                  ? `🧩 ${ppuzzle.title} ★${ppuzzle.rating} — ${pmsg || 'Find the move!'}`
+                  : challenge
+                    ? (challengeWon
+                      ? `🏆 Challenge complete — all ${totalTargets} captured!`
+                      : !hasDemoPiece
+                        ? 'Promoted! That ends the run — reset to retry the challenge.'
+                        : `🎯 Capture all black pieces with the ${demo.name.toLowerCase()}: ${remaining} left!`)
+                    : `Drag the ${demo.name.toLowerCase()} — dots show where it can go.`}
+              </strong>
+              <span className="muted">Moves tried: {demoMoves}</span>
+            </div>
+            <div className="btn-row wrap">
+              <button
+                className="btn"
+                onClick={() => {
+                  if (ppuzzle) { setPply(0); setPmsg(''); setFenBoth(ppuzzle.fen); }
+                  else { setFenBoth(demo.fen); }
+                  setDemoMoves(0);
+                }}
+              >↺ {ppuzzle ? 'Restart puzzle' : 'Reset demo'}</button>
+              {!ppuzzle && (
+                <button className={`btn ${challenge ? 'primary' : ''}`} onClick={() => setChallenge((c) => !c)}>
+                  {challenge ? '✕ Exit challenge' : `🎯 Challenge (${totalTargets} targets)`}
+                </button>
+              )}
+              {ppuzzle && (
+                <button className="btn" onClick={exitPuzzle}>✕ Exit puzzle (free play)</button>
+              )}
+            </div>
+          </>
+        )}
+
+        {section === 'notation' && (
+          <div className="card">
+            <h3>📝 Reading a chessboard</h3>
+            <p className="coach-text">
+              Files run <strong>a–h</strong> (left to right from White’s side), ranks run <strong>1–8</strong> (White to Black).
+              Every square has a name like <strong>e4</strong>. Remember: a light square sits on h1 — “white on right.”
+            </p>
+            <h4>♞ Piece letters</h4>
+            <p className="coach-text">K king · Q queen · R rook · B bishop · <strong>N knight</strong> (K is taken!) · pawns get no letter.</p>
+            <h4>✍️ Writing moves</h4>
+            <p className="coach-text">
+              Piece + square: <strong>Nf3</strong>. Pawns just name the square: <strong>e4</strong>.
+              Number White’s move and Black’s reply together: <strong>1. e4 e5</strong>.
+              If two identical pieces could move there, add the file or rank: <strong>Nbd7</strong>, <strong>R1e2</strong>.
+            </p>
+            <h4>⚡ Symbols table</h4>
+            <div className="moves symbols">
+              {SYMBOLS.map(([s, d]) => (
+                <div key={s} className="move-row">
+                  <span className="move-n"><strong>{s}</strong></span>
+                  <span style={{ gridColumn: 'span 2' }}>{d}</span>
+                </div>
+              ))}
+            </div>
+            <h4>📊 Reading this app</h4>
+            <p className="coach-text">
+              <span className="sw green" /> your move · <span className="sw red" /> opponent/last move ·
+              <span className="sw yellow" /> key square · <span className="sw" style={{ background: '#3b82f6' }} /> hint.
+              Eval <strong>+1.5</strong> means White is up ~1½ pawns; <strong>#3</strong> means mate in 3.
+            </p>
           </div>
-          {section === 'pieces' && (
-            <>
-              <div className="v2-controlsrow">
-                {PIECES.map((p) => (
-                  <Chip key={p.id} label={`${p.glyph} ${p.name}`} active={p.id === pieceId} onClick={() => pickPiece(p.id)} />
+        )}
+      </div>
+
+      <div className="side-col tb-aside tb-coachacc">
+        <TbCoachAcc defaultOpen={0} single={true}>
+        {section === 'pieces' && challenge && challengeWon && (
+          <TbCoachAccItem title="Mastered">
+          <div className="card coach">
+            <h3>🏆 {demo.name} mastered!</h3>
+            <p>You captured every target in {demoMoves} moves. Try to beat that score — or take the next piece.</p>
+            <div className="btn-row">
+              <button className="btn primary" onClick={nextPiece}>Next piece →</button>
+            </div>
+          </div>
+          </TbCoachAccItem>
+        )}
+        {section === 'pieces' ? (
+          <>
+            <TbCoachAccItem title="Piece guide">
+            <div className="card coach">
+              <h2>{demo.glyph} {demo.name} <span className="muted small">· {demo.value}</span></h2>
+              <p className="coach-text">{demo.how}</p>
+              <h4>🧠 If-scenarios to remember</h4>
+              <ul className="ideas">
+                {demo.scenarios.map((s, i) => <li key={i}>{s}</li>)}
+              </ul>
+            </div>
+            </TbCoachAccItem>
+            <TbCoachAccItem title="Puzzles">
+            <div className="card">
+              <h3>🧩 {demo.name} puzzles — play them!</h3>
+              <p className="muted small">Real Lichess puzzles starring this piece. Black replies play automatically.</p>
+              <div className="puzzle-list">
+                {PIECE_PUZZLES[demo.id].map((p) => (
+                  <button key={p.id} className={`puzzle-item ${ppuzzle?.id === p.id ? 'active' : ''}`} onClick={() => startPuzzle(p)}>
+                    <span className="puzzle-name">{p.title}</span>
+                    <span className="pill small">{p.side === 'w' ? 'White' : 'Black'}</span>
+                    <span className="pill small">★{p.rating}</span>
+                  </button>
                 ))}
               </div>
-              <div className="v2-controlsrow">
-                <Button
-                  level="tonal"
-                  label={`↺ ${ppuzzle ? 'Restart puzzle' : 'Reset demo'}`}
-                  onClick={() => {
-                    if (ppuzzle) { setPply(0); setPmsg(''); setFenBoth(ppuzzle.fen); }
-                    else { setFenBoth(demo.fen); }
-                    setDemoMoves(0);
-                  }}
-                />
-                {!ppuzzle && (
-                  <Button level={challenge ? 'text' : 'filled'} label={challenge ? '✕ Exit challenge' : `🎯 Challenge (${totalTargets} targets)`} onClick={() => setChallenge((c) => !c)} />
-                )}
-                {ppuzzle && (
-                  <Button level="text" label="✕ Exit puzzle (free play)" onClick={exitPuzzle} />
-                )}
-                <Button level="text" label="☰ Puzzles" onClick={() => setDrawerOpen(true)} />
-              </div>
-              <p className="v2-stepcount"><strong>{statusText}</strong></p>
-            </>
-          )}
-        </>
-      }
-      list={
-        section === 'pieces' ? (
-          <>
-            <SectionHeader title={`${demo.name} puzzles`} sub="Real Lichess puzzles starring this piece. Play them!" action={`${PIECE_PUZZLES[demo.id].length} puzzles`} />
-            <UpNextDrawer
-              open={drawerOpen}
-              items={PIECE_PUZZLES[demo.id].map((p) => ({ id: p.id, title: `${p.title} ★${p.rating}`, done: false }))}
-              onSelect={(id) => { startPuzzle(PIECE_PUZZLES[demo.id].find((x) => x.id === id)); setDrawerOpen(false); }}
-              onClose={() => setDrawerOpen(false)}
-            />
+              {ppuzzle && (
+                <div className="coach-text" style={{ marginTop: 8 }}>
+                  <strong>💭 Hint:</strong> {ppuzzle.hint}
+                </div>
+              )}
+            </div>
+            </TbCoachAccItem>
           </>
         ) : (
-          <SectionHeader title="How to use this guide" sub="Every move in Openings Coach, Famous Games and Puzzles is written in this notation." action="Read once" />
-        )
-      }
-    />
+          <TbCoachAccItem title="How to use">
+          <div className="card coach">
+            <h3>💡 How to use this guide</h3>
+            <p className="coach-text">
+              Every move in Openings Coach, Famous Games and Puzzles is written in this notation.
+              Learn to read it here once, and all 8,500+ annotated moves in the app become lessons.
+            </p>
+            <div className="btn-row">
+              <button className="btn primary" onClick={() => setSection('pieces')}>Next: piece school →</button>
+            </div>
+          </div>
+          </TbCoachAccItem>
+        )}
+        </TbCoachAcc>
+      </div>
+      <TbActionBar actions={[{ id: 'pieces', label: 'Piece school', onClick: showPieces, primary: section === 'pieces' }, { id: 'notation', label: 'Notation guide', onClick: showNotation, primary: section === 'notation' }]} />
+    </div>
   );
 }
